@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatDateRange, formatMonth, groupBy, linksToText, parseLinks } from "../lib/format.js";
+import { formatDateRange, formatMonth, groupBy, initials, linksToText, parseLinks, splitBullets, splitTagline } from "../lib/format.js";
 
 test("formatMonth handles ISO dates and bad input", () => {
   assert.equal(formatMonth("2022-03-01"), "Mar 2022");
@@ -24,4 +24,19 @@ test("links round-trip", () => {
   assert.equal(links.length, 2);
   assert.equal(links[1].url, "https://a.b/?q=1|2");
   assert.equal(parseLinks(linksToText(links)).length, 2);
+});
+
+test("year-only convention renders years, normal dates still show months", () => {
+  assert.equal(formatDateRange("2017-01-01", "2024-12-31"), "2017 – 2024");
+  assert.equal(formatDateRange("2024-03-01", "2024-09-30"), "Mar 2024 – Sep 2024");
+  assert.equal(formatDateRange("2024-10-01", null), "Oct 2024 – Present");
+});
+
+test("splitBullets, splitTagline and initials", () => {
+  const r = splitBullets("Intro line\n• one\n• two");
+  assert.deepEqual(r, { intro: "Intro line", bullets: ["one", "two"] });
+  assert.deepEqual(splitTagline("Full Stack Developer | React.js | Node.js"), { role: "Full Stack Developer", tech: ["React.js", "Node.js"] });
+  assert.deepEqual(splitTagline(""), { role: "", tech: [] });
+  assert.equal(initials("Ashish Pratap"), "AP");
+  assert.equal(initials(""), "");
 });

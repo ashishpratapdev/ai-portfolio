@@ -11,6 +11,11 @@ export async function getPublic(path, { revalidate } = {}) {
   return res.json();
 }
 
+/** The owner's photo: a public media item if set in the profile, otherwise /photo.jpg from frontend/public (survives deploys). */
+export function photoSrc(profile) {
+  return profile?.photo_media_id ? mediaUrl(profile.photo_media_id) : "/photo.jpg";
+}
+
 export function mediaUrl(id) {
   return id ? `${PUBLIC_API}/api/v1/public/media/${id}` : null;
 }
