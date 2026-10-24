@@ -2,20 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light tokens (admin). The public site wraps itself in .theme-site for the dark look. */
+:root {
+  --c-paper: 245 246 244; --c-surface: 255 255 255; --c-ink: 16 22 29; --c-muted: 79 91 102; --c-line: 214 218 214;
+  --c-accent: 14 107 107; --c-accent-strong: 10 80 80; --c-on-accent: 255 255 255; --c-mark: 255 209 102;
+}
+.theme-site {
+  --c-paper: 10 14 19; --c-surface: 18 24 33; --c-ink: 232 237 242; --c-muted: 147 161 177; --c-line: 38 48 61;
+  --c-accent: 184 243 74; --c-accent-strong: 214 255 120; --c-on-accent: 12 16 8; --c-mark: 38 52 20;
+  color-scheme: dark;
+}
+
 @layer base {
   html { scroll-padding-top: 5rem; }
   body { @apply bg-paper font-body text-ink antialiased; }
+  body:has(.theme-site) { background: rgb(10 14 19); }
   h1, h2, h3 { @apply font-display tracking-tight; }
-  ::selection { background: #FFD166; color: #1B2430; }
-  :focus-visible { outline: 3px solid #0E6B6B; outline-offset: 2px; }
+  ::selection { background: rgb(var(--c-accent)); color: rgb(var(--c-on-accent)); }
+  :focus-visible { outline: 3px solid rgb(var(--c-accent)); outline-offset: 3px; }
 }
 
 @layer components {
-  .btn { @apply inline-flex items-center justify-center rounded-sm border border-ink px-4 py-2 text-sm font-medium transition-colors hover:bg-ink hover:text-paper disabled:opacity-50; }
-  .btn-primary { @apply border-teal bg-teal text-white hover:bg-teal-dark hover:text-white; }
-  .btn-danger { @apply border-red-700 text-red-800 hover:bg-red-700 hover:text-white; }
-  .field { @apply w-full rounded-sm border border-ink/40 bg-white px-3 py-2 text-sm; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink/30 px-5 py-2.5 text-sm font-semibold transition-colors hover:border-teal hover:text-teal disabled:opacity-50; }
+  .btn-primary { @apply border-teal bg-teal text-onaccent hover:border-teal-dark hover:bg-teal-dark hover:text-onaccent; }
+  .btn-danger { @apply border-red-700 text-red-800 hover:border-red-700 hover:bg-red-700 hover:text-white; }
+  .field { @apply w-full rounded-lg border border-ink/30 bg-surface px-3 py-2 text-sm text-ink; }
   .label { @apply mb-1 block text-sm font-medium; }
+  .eyebrow { @apply font-mono text-xs uppercase tracking-[0.22em] text-teal; }
+  .card { @apply rounded-2xl border border-line bg-surface p-6 transition-colors hover:border-teal/60; }
+  .chip { @apply inline-block rounded-full border border-line bg-surface px-3 py-1 font-mono text-xs text-ink; }
+  .hero-glow { background: radial-gradient(60rem 28rem at 85% -10%, rgb(var(--c-accent) / 0.16), transparent 60%), radial-gradient(40rem 24rem at -10% 110%, rgb(var(--c-accent) / 0.07), transparent 60%); }
+  .grid-bg { background-image: linear-gradient(rgb(var(--c-line) / 0.55) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--c-line) / 0.55) 1px, transparent 1px); background-size: 56px 56px; -webkit-mask-image: radial-gradient(ellipse at 70% 20%, black, transparent 70%); mask-image: radial-gradient(ellipse at 70% 20%, black, transparent 70%); }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  .theme-site { --c-paper: 255 255 255; --c-surface: 255 255 255; --c-ink: 0 0 0; --c-muted: 60 60 60; --c-line: 200 200 200; --c-accent: 14 107 107; }
+  body:has(.theme-site) { background: #fff; }
 }
 
 @media (prefers-reduced-motion: reduce) {
