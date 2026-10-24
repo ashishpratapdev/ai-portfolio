@@ -9,7 +9,7 @@ from ..routers.media import upload_path
 from ..schemas import ExperienceOut, ProfileOut, ProjectOut, ServiceOut, SkillOut
 
 router = APIRouter(prefix="/public", tags=["public"])
-PUBLIC_SETTINGS = ("site_title", "tagline", "footer_text")
+PUBLIC_SETTINGS = ("site_title", "tagline", "footer_text", "education")
 
 
 def _published(db: Session, Model):

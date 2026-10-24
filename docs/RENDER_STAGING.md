@@ -52,3 +52,10 @@ Check `git status` shows no `.env` files (they are git-ignored). If the repo is 
 ## 5. Promoting to `main` (later)
 Merge `staging` into `main`, create `portfolio-prod-*` services deploying branch `main` on **paid** plans (always-on API, persistent storage or object storage,
 paid Postgres with backups), use NEW secrets (never reuse staging ones), set `APP_ENV=production`, then follow `docs/DEPLOYMENT.md` §3-§8.
+
+## Photo and content (added after the resume import)
+- Save your photo as `frontend/public/photo.jpg`, then `git add . && git commit -m "Add photo" && git push`. Render redeploys automatically.
+  (Do not rely on Admin → Media for this on the free plan: uploaded files are lost on restart.)
+- Your resume content is seeded once at the API's first start (profile, 4 roles, skills, 1 project, 3 services, education).
+  Edit anything in Admin afterwards; the seed never runs again. Disable it entirely with `SEED_RESUME=0`.
+- Year-only dates: the freelance role uses Jan 1 → Dec 31 so it renders as "2017 – 2024".

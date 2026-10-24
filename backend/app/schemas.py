@@ -151,4 +151,4 @@ class MediaPatch(Strict):
     is_public: Optional[bool] = None
 
 
-ALLOWED_SETTINGS = {"site_title", "tagline", "footer_text", "resume_media_id"}
+ALLOWED_SETTINGS = {"site_title", "tagline", "footer_text", "education", "resume_media_id"}
