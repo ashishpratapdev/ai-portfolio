@@ -7,6 +7,7 @@ const FIELDS = [
   ["site_title", "Site title"],
   ["tagline", "Tagline (used as the page description)"],
   ["footer_text", "Footer text"],
+  ["education", "Education (shown on About and Resume)"],
   ["resume_media_id", "Resume media ID (a PDF; it must also be marked public)"],
 ];
 
