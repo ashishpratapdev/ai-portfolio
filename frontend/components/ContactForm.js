@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import { Notice } from "./AdminShell";
 
 export default function ContactForm() {
   const [state, setState] = useState({ kind: "", text: "" });
@@ -28,9 +27,9 @@ export default function ContactForm() {
   }
 
   return (
-    <form onSubmit={submit} className="mt-10 max-w-xl space-y-4" noValidate={false}>
+    <form onSubmit={submit} className="card space-y-4 !p-6 sm:!p-8">
       <h2 className="text-2xl font-semibold">Send a message</h2>
-      <Notice kind={state.kind}>{state.text}</Notice>
+      {state.text && <p role={state.kind === "error" ? "alert" : "status"} className={`rounded-lg border px-3 py-2 text-sm ${state.kind === "error" ? "border-red-500/60 bg-red-500/10 text-red-300" : "border-teal/60 bg-teal/10 text-teal"}`}>{state.text}</p>}
       <div><label className="label" htmlFor="c-name">Name *</label><input id="c-name" name="name" required maxLength={120} autoComplete="name" className="field" /></div>
       <div><label className="label" htmlFor="c-email">Email *</label><input id="c-email" name="email" type="email" required maxLength={254} autoComplete="email" className="field" /></div>
       <div><label className="label" htmlFor="c-subject">Subject</label><input id="c-subject" name="subject" maxLength={200} className="field" /></div>

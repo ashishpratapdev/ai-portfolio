@@ -4,7 +4,7 @@ function Inline({ nodes }) {
   return nodes.map((n, i) => {
     switch (n.type) {
       case "text": return n.value;
-      case "code": return <code key={i} className="bg-white px-1 py-0.5 text-[0.9em]">{n.value}</code>;
+      case "code": return <code key={i} className="rounded bg-surface px-1 py-0.5 font-mono text-[0.9em]">{n.value}</code>;
       case "strong": return <strong key={i}><Inline nodes={n.children} /></strong>;
       case "em": return <em key={i}><Inline nodes={n.children} /></em>;
       case "link": {
@@ -12,7 +12,7 @@ function Inline({ nodes }) {
         const external = /^https?:/i.test(n.href);
         return (
           <a key={i} href={n.href} {...(external ? { target: "_blank", rel: "noopener noreferrer nofollow ugc" } : {})}
-            className="underline decoration-teal decoration-2 underline-offset-4 hover:bg-mark">
+            className="text-teal underline decoration-teal/40 decoration-2 underline-offset-4 hover:decoration-teal">
             <Inline nodes={n.children} />
           </a>
         );
@@ -33,7 +33,7 @@ function Blocks({ blocks }) {
       case "ul": return <ul key={i} className="my-4 list-disc space-y-1 pl-6">{b.items.map((it, j) => <li key={j}><Inline nodes={it} /></li>)}</ul>;
       case "ol": return <ol key={i} className="my-4 list-decimal space-y-1 pl-6">{b.items.map((it, j) => <li key={j}><Inline nodes={it} /></li>)}</ol>;
       case "quote": return <blockquote key={i} className="my-4 border-l-4 border-teal pl-4 text-muted"><Blocks blocks={b.children} /></blockquote>;
-      case "code": return <pre key={i} className="my-4 overflow-x-auto bg-ink p-4 text-sm text-paper"><code>{b.value}</code></pre>;
+      case "code": return <pre key={i} className="my-4 overflow-x-auto rounded-xl border border-line bg-surface p-4 font-mono text-sm"><code>{b.value}</code></pre>;
       case "hr": return <hr key={i} className="my-8 border-line" />;
       default: return null;
     }
