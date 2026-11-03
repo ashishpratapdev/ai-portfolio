@@ -6,7 +6,7 @@ import { adminFetch, errorText } from "@/lib/adminApi";
 
 const TABS = ["Overview", "Topics", "Jobs", "Review queue", "History"];
 const lines = (s) => s.split("\n").map((x) => x.trim()).filter(Boolean);
-const JOB_STYLE = { queued: "bg-white", running: "bg-sky-100", succeeded: "bg-emerald-100", failed: "bg-red-100", cancelled: "bg-amber-100" };
+const JOB_STYLE = { queued: "bg-surface", running: "bg-sky-500/15", succeeded: "bg-emerald-500/15", failed: "bg-red-500/15", cancelled: "bg-amber-500/15" };
 
 export default function AIDashboard() {
   const [tab, setTab] = useState("Overview");
@@ -17,7 +17,7 @@ export default function AIDashboard() {
 
   return (
     <AdminShell title="AI drafts">
-      <p className="mb-4 max-w-2xl border-l-4 border-teal bg-white px-3 py-2 text-sm">
+      <p className="mb-4 max-w-2xl border-l-4 border-teal bg-surface px-3 py-2 text-sm">
         The AI only prepares drafts. Every AI article lands in <strong>review</strong>, and nothing is published until you approve that exact revision.
         There is no setting that changes this.
       </p>
@@ -80,7 +80,7 @@ function Overview({ ok, fail }) {
       </form>
       <aside className="space-y-4">
         {usage && (
-          <section className="border border-ink/30 bg-white p-4" aria-labelledby="us">
+          <section className="border border-ink/30 bg-surface p-4" aria-labelledby="us">
             <h2 id="us" className="font-semibold">Usage</h2>
             <dl className="mt-2 space-y-1 text-sm">
               <div className="flex justify-between"><dt>Provider</dt><dd>{usage.provider}</dd></div>
@@ -89,7 +89,7 @@ function Overview({ ok, fail }) {
               <div className="flex justify-between"><dt>Estimated cost</dt><dd>{usage.estimated_cost_usd === null ? "unknown" : `$${usage.estimated_cost_usd}`}</dd></div>
             </dl>
             {usage.cost_note && <p className="mt-2 text-xs text-muted">{usage.cost_note}</p>}
-            {usage.provider === "mock" && <p className="mt-2 text-xs font-semibold text-amber-800">Mock provider: drafts are fake placeholders. Set AI_PROVIDER=anthropic on the server for real drafts (billed by your provider).</p>}
+            {usage.provider === "mock" && <p className="mt-2 text-xs font-semibold text-amber-300">Mock provider: drafts are fake placeholders. Set AI_PROVIDER=anthropic on the server for real drafts (billed by your provider).</p>}
           </section>
         )}
         <div className="flex flex-col gap-2">
@@ -174,7 +174,7 @@ function Jobs({ ok, fail }) {
               {["failed", "cancelled"].includes(j.state) && <button className="btn !py-1" onClick={() => act(j.id, "retry")}>Retry</button>}
             </span>
           </div>
-          {j.error && <p className="mt-1 text-sm text-red-800" role="alert">{j.error}</p>}
+          {j.error && <p className="mt-1 text-sm text-red-300" role="alert">{j.error}</p>}
           {j.log?.length > 0 && <details className="mt-1 text-xs text-muted"><summary>Log</summary><ul>{j.log.map((l, i) => <li key={i}>{l.t.slice(11, 19)} {l.m}</li>)}</ul></details>}
         </li>
       ))}
@@ -194,7 +194,7 @@ function Queue({ fail }) {
         return (
           <li key={p.id} className="flex flex-wrap items-center gap-3 py-3">
             <Link className="font-semibold underline decoration-teal decoration-2 underline-offset-4" href={`/admin/blog/${p.id}`}>{p.title}</Link>
-            <span className={`text-sm ${high ? "font-semibold text-red-800" : "text-muted"}`}>{high} high · {p.quality_warnings.length} notes · {p.source_refs.length} sources</span>
+            <span className={`text-sm ${high ? "font-semibold text-red-300" : "text-muted"}`}>{high} high · {p.quality_warnings.length} notes · {p.source_refs.length} sources</span>
           </li>
         );
       })}

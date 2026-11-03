@@ -38,7 +38,7 @@ export default function BlogAdmin() {
                 <p className="text-sm text-muted">/blog/{p.slug} · updated {new Date(p.updated_at).toLocaleString()}</p>
               </div>
               {p.is_ai_generated && <span className="border border-ink px-2 py-0.5 text-xs font-semibold">AI DRAFT</span>}
-              {p.quality_warnings?.filter((w) => w.severity === "high").length > 0 && <span className="text-xs font-semibold text-red-800">{p.quality_warnings.filter((w) => w.severity === "high").length} high warnings</span>}
+              {p.quality_warnings?.filter((w) => w.severity === "high").length > 0 && <span className="text-xs font-semibold text-red-300">{p.quality_warnings.filter((w) => w.severity === "high").length} high warnings</span>}
               <StateBadge state={p.state} />
             </li>
           ))}

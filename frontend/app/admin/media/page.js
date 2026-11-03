@@ -40,7 +40,7 @@ export default function MediaAdmin() {
   return (
     <AdminShell title="Media">
       <Notice kind={msg.kind}>{msg.text}</Notice>
-      <form onSubmit={upload} className="mb-8 max-w-xl space-y-3 border border-ink/30 bg-white p-5">
+      <form onSubmit={upload} className="mb-8 max-w-xl space-y-3 border border-ink/30 bg-surface p-5">
         <div><label className="label" htmlFor="file">File (PNG, JPEG, WebP or PDF, max 5 MB)</label><input id="file" name="file" type="file" required accept="image/png,image/jpeg,image/webp,application/pdf" className="field" /></div>
         <div><label className="label" htmlFor="alt">Alt text (for images)</label><input id="alt" name="alt_text" maxLength={300} className="field" /></div>
         <button className="btn btn-primary" disabled={busy}>{busy ? "Uploading…" : "Upload"}</button>

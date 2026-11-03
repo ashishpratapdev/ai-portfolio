@@ -59,3 +59,11 @@ paid Postgres with backups), use NEW secrets (never reuse staging ones), set `AP
 - Your resume content is seeded once at the API's first start (profile, 4 roles, skills, 1 project, 3 services, education).
   Edit anything in Admin afterwards; the seed never runs again. Disable it entirely with `SEED_RESUME=0`.
 - Year-only dates: the freelance role uses Jan 1 → Dec 31 so it renders as "2017 – 2024".
+
+## Cold starts (free plan) and seed repair
+- The free API sleeps after ~15 min idle. While it wakes (30-60 s) Render answers 429/502. The frontend now wakes the API once (`/health`),
+  retries with backoff, and caches public data for 30 s, so the first visit is slow but no longer shows an error page.
+- A keep-alive ping would avoid the delay, but free instance hours (750/month per workspace) cannot cover two always-on services. Accept the
+  slow first visit on staging, or use a paid plan for production.
+- `SEED_RESUME`: unset/`1` = seed once; `0` = never; any other value (e.g. `reseed-1`) = run once more, non-destructively, to fill in what is
+  missing (placeholder profile, empty tables, missing settings). Existing rows and your admin edits are never overwritten or duplicated.

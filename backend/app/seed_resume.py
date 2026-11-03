@@ -1,6 +1,6 @@
 """One-time seed of the owner's real portfolio content, taken ONLY from the owner's resume (ashish_resume_update.pdf).
 Nothing here is invented: skills, roles, dates, employers, project and education are as written in the resume.
-Runs once (marker in site_settings) so later admin edits/deletions are never overwritten. Disable with SEED_RESUME=0."""
+Runs once (marker in site_settings); see seed() for the SEED_RESUME modes. Admin edits are never overwritten."""
 import os
 from datetime import date
 
@@ -85,31 +85,54 @@ SETTINGS = {
 
 
 def seed(db: Session) -> bool:
-    """Insert the resume content once. Returns True if it seeded."""
-    if os.environ.get("SEED_RESUME", "1") == "0" or db.get(SiteSetting, MARKER):
+    """Insert the resume content. Returns True if it changed anything.
+
+    SEED_RESUME controls it:  unset / "1" -> run once (marker "1");  "0" -> never;
+    any other value (e.g. "reseed-1") -> run once per distinct value, to REPAIR a site that came up empty.
+    It is always non-destructive: a table that already has rows is left alone, only the untouched placeholder profile is
+    replaced, and existing settings are never overwritten. Your own admin edits are safe."""
+    mode = os.environ.get("SEED_RESUME", "1")
+    if mode == "0":
         return False
+    marker = db.get(SiteSetting, MARKER)
+    if marker is not None and marker.value == mode:
+        return False
+    changed = False
     profile = db.scalar(select(Profile).limit(1))
     if profile is None:
-        profile = Profile(status="published", sort_order=0, **PROFILE)
-        db.add(profile)
-    elif profile.full_name.startswith("[PLACEHOLDER]"):  # only replace the untouched placeholder profile
+        db.add(Profile(status="published", sort_order=0, **PROFILE))
+        changed = True
+    elif profile.full_name.startswith("[PLACEHOLDER]"):  # only the untouched placeholder is replaced
         for k, v in PROFILE.items():
             setattr(profile, k, v)
         profile.status = "published"
-    order = 0
-    for category, names in SKILLS:
-        for name in names:
-            db.add(Skill(name=name, category=category, status="published", sort_order=order))
-            order += 1
-    for i, e in enumerate(EXPERIENCE):
-        db.add(Experience(status="published", sort_order=i, **e))
-    for i, p in enumerate(PROJECTS):
-        db.add(Project(status="published", sort_order=i, **p))
-    for i, s in enumerate(SERVICES):
-        db.add(Service(status="published", sort_order=i, **s))
+        changed = True
+    if db.scalar(select(Skill.id).limit(1)) is None:
+        order = 0
+        for category, names in SKILLS:
+            for name in names:
+                db.add(Skill(name=name, category=category, status="published", sort_order=order))
+                order += 1
+        changed = True
+    if db.scalar(select(Experience.id).limit(1)) is None:
+        for i, e in enumerate(EXPERIENCE):
+            db.add(Experience(status="published", sort_order=i, **e))
+        changed = True
+    if db.scalar(select(Project.id).limit(1)) is None:
+        for i, p in enumerate(PROJECTS):
+            db.add(Project(status="published", sort_order=i, **p))
+        changed = True
+    if db.scalar(select(Service.id).limit(1)) is None:
+        for i, sv in enumerate(SERVICES):
+            db.add(Service(status="published", sort_order=i, **sv))
+        changed = True
     for k, v in SETTINGS.items():
         if db.get(SiteSetting, k) is None:
             db.add(SiteSetting(key=k, value=v))
-    db.add(SiteSetting(key=MARKER, value="1"))
+            changed = True
+    if marker is None:
+        db.add(SiteSetting(key=MARKER, value=mode))
+    else:
+        marker.value = mode
     db.commit()
-    return True
+    return changed

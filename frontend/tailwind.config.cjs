@@ -8,7 +8,7 @@ module.exports = {
     extend: {
       colors: {
         paper: c("paper"), surface: c("surface"), ink: c("ink"), muted: c("muted"), line: c("line"),
-        teal: { DEFAULT: c("accent"), dark: c("accent-strong") }, onaccent: c("on-accent"), mark: c("mark"),
+        teal: { DEFAULT: c("accent"), dark: c("accent-strong") }, onaccent: c("on-accent"), mark: c("mark"), panel: c("panel"), sidebar: c("sidebar"),
       },
       fontFamily: {
         display: ["var(--font-display)", "system-ui", "sans-serif"],

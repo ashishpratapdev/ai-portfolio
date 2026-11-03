@@ -90,7 +90,7 @@ export default function ResourceManager({ resource, config }) {
       <Notice kind={msg.kind}>{msg.text}</Notice>
 
       {editing ? (
-        <form onSubmit={save} className="mb-10 max-w-xl space-y-4 border border-ink/30 bg-white p-5">
+        <form onSubmit={save} className="mb-10 max-w-xl space-y-4 border border-ink/30 bg-surface p-5">
           <h2 className="text-xl font-semibold">{editing === "new" ? "New item" : "Edit item"}</h2>
           {fields.map((f) => (
             <div key={f.name}>

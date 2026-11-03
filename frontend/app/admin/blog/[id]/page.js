@@ -22,7 +22,7 @@ const toPayload = (f) => ({
   source_refs: parseLinks(f.sources).map((l) => ({ title: l.label, url: l.url })), cover_media_id: f.cover_media_id ? Number(f.cover_media_id) : null,
   cover_alt: f.cover_alt || null, seo_title: f.seo_title || null, seo_description: f.seo_description || null, canonical_url: f.canonical_url || null, noindex: f.noindex,
 });
-const SEV = { high: "border-red-700 bg-red-50", medium: "border-amber-600 bg-amber-50", low: "border-line bg-white", info: "border-sky-600 bg-sky-50" };
+const SEV = { high: "border-red-500/70 bg-red-500/10", medium: "border-amber-500/70 bg-amber-500/10", low: "border-line bg-surface", info: "border-sky-500/70 bg-sky-500/10" };
 
 export default function Editor({ params }) {
   const { id } = use(params);
@@ -91,15 +91,15 @@ export default function Editor({ params }) {
       <Notice kind={msg.kind}>{msg.text}</Notice>
 
       {post && (
-        <section className="mb-8 border border-ink/30 bg-white p-5" aria-labelledby="wf">
+        <section className="mb-8 border border-ink/30 bg-surface p-5" aria-labelledby="wf">
           <h2 id="wf" className="flex flex-wrap items-center gap-3 text-xl font-semibold">Workflow <StateBadge state={post.state} />{post.is_ai_generated && <span className="border border-ink px-2 py-0.5 text-xs font-semibold">AI DRAFT</span>}</h2>
           <p className="mt-2 text-sm text-muted">
             Revision <code className="bg-paper px-1">{post.content_hash.slice(0, 12)}</code>
             {post.approved_at && <> · approved {post.approval_valid ? "this exact revision" : "an older revision (no longer valid)"} on {new Date(post.approved_at).toLocaleString()} by admin #{post.approved_by}</>}
             {post.scheduled_at && <> · scheduled for {new Date(post.scheduled_at).toLocaleString()}</>}
           </p>
-          {post.rejection_reason && <p className="mt-2 text-sm text-red-800">Rejected: {post.rejection_reason}</p>}
-          {dirty && <p className="mt-2 text-sm font-semibold text-amber-800">You have unsaved changes. Save before using workflow actions so you approve what you reviewed.</p>}
+          {post.rejection_reason && <p className="mt-2 text-sm text-red-300">Rejected: {post.rejection_reason}</p>}
+          {dirty && <p className="mt-2 text-sm font-semibold text-amber-300">You have unsaved changes. Save before using workflow actions so you approve what you reviewed.</p>}
           <div className="mt-4 flex flex-wrap gap-2">
             {s === "draft" && <button className="btn" disabled={dirty} onClick={() => act("review", undefined, "Submitted for review.")}>Submit for review</button>}
             {s === "in_review" && <button className="btn btn-primary" disabled={dirty} onClick={() => act("approve", { revision_hash: post.content_hash }, "Approved this exact revision.")}>Approve this revision</button>}
@@ -136,7 +136,7 @@ export default function Editor({ params }) {
           <div><label className="label" htmlFor="excerpt">Excerpt * ({f.excerpt.length}/400)</label><textarea id="excerpt" required maxLength={400} className="field min-h-20" value={f.excerpt} onChange={set("excerpt")} /></div>
           <div>
             <div className="flex items-center justify-between"><label className="label" htmlFor="body">Body (Markdown) *</label><button type="button" className="btn !py-1" onClick={() => setPreview(!preview)}>{preview ? "Edit" : "Preview"}</button></div>
-            {preview ? <div className="border border-line bg-white p-5"><h2 className="text-3xl font-bold">{f.title}</h2><Markdown source={f.body} /></div>
+            {preview ? <div className="border border-line bg-surface p-5"><h2 className="text-3xl font-bold">{f.title}</h2><Markdown source={f.body} /></div>
               : <textarea id="body" required className="field min-h-96 font-mono" value={f.body} onChange={set("body")} />}
           </div>
           <div><label className="label" htmlFor="author">Author *</label><input id="author" required maxLength={120} className="field" value={f.author_name} onChange={set("author_name")} /></div>
