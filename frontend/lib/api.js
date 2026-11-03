@@ -1,5 +1,5 @@
-const API = process.env.API_URL || "http://localhost:8000";
-const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API = process.env.API_URL || "https://portfolio-ashish-api.onrender.com";
+const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL || "https://portfolio-ashish-api.onrender.com";
 
 const RETRYABLE = new Set([429, 502, 503, 504]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
