@@ -67,3 +67,15 @@ paid Postgres with backups), use NEW secrets (never reuse staging ones), set `AP
   slow first visit on staging, or use a paid plan for production.
 - `SEED_RESUME`: unset/`1` = seed once; `0` = never; any other value (e.g. `reseed-1`) = run once more, non-destructively, to fill in what is
   missing (placeholder profile, empty tables, missing settings). Existing rows and your admin edits are never overwritten or duplicated.
+
+## Always-open site (static fallback), hero video, photo
+- `frontend/lib/static-content.js` is a built-in copy of your resume content (generated from `backend/app/seed_resume.py` by
+  `python scripts/gen_static_content.py`). If the API is asleep, erroring, or not configured (e.g. missing `API_URL` on Vercel), public pages
+  render this content instead of an error, so the site always opens. When the API answers, live data from your admin wins.
+  Each request waits at most ~8 s for the API; after a failure the API is skipped for 20 s and woken in the background.
+  Set `STATIC_FALLBACK=0` to disable (pages then error when the API is down). Admin always needs the live API.
+- Because the fallback is a copy, edits made in the admin appear only while the API is awake. After big content changes, regenerate it
+  (edit `seed_resume.py`, run the script, commit).
+- Hero: `frontend/public/hero.mp4` plays muted and looping behind the hero text; if it is missing or the visitor prefers reduced motion,
+  an animated gradient shows instead. Replace it with your own video (H.264 mp4, ~1280x720, no audio, ideally under 8 MB).
+- Photo: `frontend/public/photo.jpg` (square, 384 px now; a larger 800x800 version will look sharper in the hero).

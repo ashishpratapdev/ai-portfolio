@@ -17,7 +17,8 @@ export async function generateMetadata() {
     title: { default: s.site_title || "Portfolio", template: `%s | ${s.site_title || "Portfolio"}` },
     description: s.tagline,
     alternates: { types: { "application/rss+xml": "/blog/rss.xml" } },
-    openGraph: { siteName: s.site_title || "Portfolio", type: "website" },
+    openGraph: { siteName: s.site_title || "Portfolio", type: "website", images: [{ url: "/photo.jpg", width: 384, height: 384, alt: s.site_title || "Portfolio" }] },
+    twitter: { card: "summary", images: ["/photo.jpg"] },
     verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined,
   };
 }

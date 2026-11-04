@@ -38,6 +38,10 @@
   .grid-bg { background-image: linear-gradient(rgb(var(--c-line) / 0.55) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--c-line) / 0.55) 1px, transparent 1px); background-size: 56px 56px; -webkit-mask-image: radial-gradient(ellipse at 70% 20%, black, transparent 70%); mask-image: radial-gradient(ellipse at 70% 20%, black, transparent 70%); }
 }
 
+/* Animated fallback behind the hero video (also what shows if the video is missing). */
+@keyframes aurora-drift { 0% { background-position: 0% 0%, 100% 100%, 50% 50%; } 50% { background-position: 30% 20%, 70% 80%, 60% 40%; } 100% { background-position: 0% 0%, 100% 100%, 50% 50%; } }
+.aurora { background-color: rgb(var(--c-paper)); background-image: radial-gradient(40rem 26rem at 80% 25%, rgb(var(--c-accent) / .28), transparent 60%), radial-gradient(36rem 22rem at 15% 80%, rgb(45 212 191 / .20), transparent 60%), radial-gradient(30rem 30rem at 50% 50%, rgb(var(--c-accent) / .08), transparent 60%); background-size: 140% 140%, 140% 140%, 120% 120%; animation: aurora-drift 18s ease-in-out infinite; }
+
 @media print {
   .no-print { display: none !important; }
   .theme-site, .theme-admin { --c-paper: 255 255 255; --c-surface: 255 255 255; --c-ink: 0 0 0; --c-muted: 60 60 60; --c-line: 200 200 200; --c-accent: 14 107 107; }

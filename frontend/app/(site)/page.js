@@ -1,4 +1,5 @@
 import Avatar from "@/components/Avatar";
+import HeroBackground from "@/components/HeroBackground";
 import ProjectCard from "@/components/ProjectCard";
 import SkillGroups from "@/components/SkillGroups";
 import Timeline from "@/components/Timeline";
@@ -16,16 +17,15 @@ export default async function Home() {
 
   return (
     <>
-      <section className="relative overflow-hidden border-b border-line" aria-labelledby="hero-h">
-        <div className="hero-glow absolute inset-0" aria-hidden="true" />
-        <div className="grid-bg absolute inset-0" aria-hidden="true" />
-        <Container className="relative grid items-center gap-12 py-16 md:grid-cols-[1.25fr_0.75fr] md:py-28">
+      <section className="relative isolate flex min-h-[calc(100svh-4rem)] items-center overflow-hidden border-b border-line" aria-labelledby="hero-h">
+        <HeroBackground />
+        <Container className="relative grid w-full items-center gap-12 py-16 md:grid-cols-[1.25fr_0.75fr] md:py-24">
           {profile ? (
             <>
               <div>
                 {(role || profile.location) && <p className="eyebrow mb-5">{[role, profile.location].filter(Boolean).join(" · ")}</p>}
-                <h1 id="hero-h" className="text-5xl font-extrabold leading-[1.02] sm:text-7xl">{profile.full_name}<span className="text-teal">.</span></h1>
-                <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted sm:text-xl">{profile.headline}</p>
+                <h1 id="hero-h" className="text-5xl font-extrabold leading-[1.02] drop-shadow-[0_2px_18px_rgba(0,0,0,.55)] sm:text-7xl">{profile.full_name}<span className="text-teal">.</span></h1>
+                <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink/85 sm:text-xl">{profile.headline}</p>
                 <div className="mt-8 flex flex-wrap gap-3">
                   <ButtonLink href="/projects" variant="primary">View my work</ButtonLink>
                   <ButtonLink href="/contact">Contact me</ButtonLink>
@@ -35,7 +35,7 @@ export default async function Home() {
               </div>
               <div className="relative mx-auto w-full max-w-xs md:max-w-none">
                 <div className="absolute -right-3 -top-3 h-full w-full rounded-[2rem] border-2 border-teal/70" aria-hidden="true" />
-                <Avatar src={photoSrc(profile)} name={profile.full_name} size={420} fluid rounded="rounded-[2rem]" priority className="relative border border-line" />
+                <Avatar src={photoSrc(profile)} name={profile.full_name} size={420} fluid rounded="rounded-[2rem]" priority className="relative border border-line shadow-[0_30px_80px_-20px_rgba(0,0,0,.7)]" />
               </div>
             </>
           ) : (

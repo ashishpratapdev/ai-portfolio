@@ -1,53 +1,72 @@
-const API = process.env.API_URL || "https://portfolio-ashish-api.onrender.com";
-const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL || "https://portfolio-ashish-api.onrender.com";
+const API = process.env.API_URL || "http://localhost:8000";
+const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+import { STATIC_CONTENT as S } from "./static-content.js";
+
+const FALLBACK = process.env.STATIC_FALLBACK !== "0";
+const TIMEOUT_MS = Number(process.env.PUBLIC_API_TIMEOUT_MS || 3500);
 const RETRYABLE = new Set([429, 502, 503, 504]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** The free API host sleeps when idle and answers 429/502/503 (or hangs) while it wakes up (~30-60 s).
- *  Retry with backoff instead of showing an error page. */
-async function fetchWithRetry(url, init = {}, attempts = 7) {
-  let last;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(15000) });
-      if (!RETRYABLE.has(res.status)) return res;
-      last = res;
-      res.body?.cancel();
-    } catch (e) {
-      last = e;
+/** Built-in resume content, served when the API is asleep/unreachable so the public site ALWAYS opens. */
+export function staticFor(path) {
+  const [p] = path.split("?");
+  switch (p) {
+    case "/profile": return S.profile;
+    case "/skills": return S.skills;
+    case "/experience": return S.experience;
+    case "/projects": return S.projects;
+    case "/services": return S.services;
+    case "/settings": return S.settings;
+    case "/blog": return { items: [], total: 0, page: 1, page_size: 10, pages: 1 };
+    case "/blog-filters": return { categories: [], tags: [] };
+    case "/sitemap":
+      return [...["/", "/about", "/experience", "/projects", "/services", "/resume", "/contact", "/blog"], ...S.projects.map((x) => `/projects/${x.slug}`)]
+        .map((path) => ({ path, lastmod: null }));
+    default: {
+      const m = /^\/projects\/([^/]+)$/.exec(p);
+      return m ? S.projects.find((x) => x.slug === decodeURIComponent(m[1])) || null : null;
     }
-    if (i < attempts - 1) await sleep(Math.min(1500 * 2 ** i, 12000));
   }
-  if (last instanceof Response) return last;
-  throw last;
 }
 
-// Wake the API once and let every concurrent request share that wait, instead of firing a burst at a sleeping host.
-let awakeAt = 0;
-let waking = null;
-async function ensureAwake() {
-  if (Date.now() - awakeAt < 5 * 60 * 1000) return;
-  waking ||= (async () => {
+// Circuit breaker: after a failure, skip the API for a while so pages open instantly from the built-in content
+// instead of every request waiting on a sleeping host. One background ping wakes it for the next visitor.
+let downUntil = 0;
+let waking = false;
+function wake() {
+  if (waking) return;
+  waking = true;
+  fetch(`${API}/health`, { cache: "no-store", signal: AbortSignal.timeout(60000) }).catch(() => {}).finally(() => { waking = false; });
+}
+
+/** Returns a Response, or null if the API is down/asleep (never waits more than ~8 s in total). */
+async function tryApi(url, init = {}) {
+  if (Date.now() < downUntil) return null;
+  for (let i = 0; i < 2; i++) {
     try {
-      const res = await fetchWithRetry(`${API}/health`, { cache: "no-store" }, 8);
-      if (res.ok) awakeAt = Date.now();
+      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+      if (!RETRYABLE.has(res.status) && res.status < 500) { downUntil = 0; return res; }
+      res.body?.cancel();
     } catch {
-      /* the data request below reports the real error */
-    } finally {
-      waking = null;
+      /* timeout / connection refused: treated as "asleep" */
     }
-  })();
-  await waking;
+    if (i === 0) await sleep(600);
+  }
+  downUntil = Date.now() + 20_000;
+  wake();
+  return null;
 }
 
-/** Fetch published content. Returns null on 404; throws on other failures (handled by error.js).
- *  Cached for 30 s by default (blog lists may pass a longer revalidate); the API never returns drafts, so caches hold only public data. */
+/** Fetch published content (cached 30 s). 404 -> null, except the profile: if it is not published yet the built-in
+ *  profile is shown. API asleep/erroring -> built-in resume content (set STATIC_FALLBACK=0 to throw instead). */
 export async function getPublic(path, { revalidate = 30 } = {}) {
-  await ensureAwake();
-  const res = await fetchWithRetry(`${API}/api/v1/public${path}`, { next: { revalidate } });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`The content service returned ${res.status}.`);
+  const res = await tryApi(`${API}/api/v1/public${path}`, { next: { revalidate } });
+  if (!res || (!res.ok && res.status !== 404)) {
+    if (!FALLBACK) throw new Error("The content service is not responding.");
+    return staticFor(path);
+  }
+  if (res.status === 404) return FALLBACK && path.split("?")[0] === "/profile" ? staticFor("/profile") : null;
   return res.json();
 }
 
@@ -62,10 +81,9 @@ export function mediaUrl(id) {
 
 export async function resumeAvailable() {
   try {
-    await ensureAwake();
-    const res = await fetchWithRetry(`${API}/api/v1/public/resume`, { next: { revalidate: 30 } }, 3);
-    res.body?.cancel();
-    return res.ok;
+    const res = await tryApi(`${API}/api/v1/public/resume`, { next: { revalidate: 30 } });
+    res?.body?.cancel();
+    return Boolean(res?.ok);
   } catch {
     return false;
   }
