@@ -26,6 +26,8 @@ class Settings:
     ai_model: str
     ai_price_in_per_mtok: float
     ai_price_out_per_mtok: float
+    adzuna_app_id: str
+    adzuna_app_key: str
 
 
 def _normalise_db_url(url: str) -> str:
@@ -60,4 +62,6 @@ def get_settings() -> Settings:
         ai_model=os.environ.get("AI_MODEL", ""),
         ai_price_in_per_mtok=float(os.environ.get("AI_PRICE_IN_PER_MTOK", "0")),
         ai_price_out_per_mtok=float(os.environ.get("AI_PRICE_OUT_PER_MTOK", "0")),
+        adzuna_app_id=os.environ.get("ADZUNA_APP_ID", ""),
+        adzuna_app_key=os.environ.get("ADZUNA_APP_KEY", ""),
     )

@@ -3,11 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import get_settings
-from .routers import admin, ai_admin, auth, blog_admin, blog_public, contact, media, public, worker
+from .routers import admin, ai_admin, auth, blog_admin, blog_public, contact, jobs_admin, media, public, worker
 from .services.blog import BlogError
 
 settings = get_settings()
-app = FastAPI(title="Portfolio API", version="0.3.0",
+app = FastAPI(title="Portfolio API", version="0.4.0",
               docs_url=None if settings.app_env == "production" else "/docs",
               redoc_url=None, openapi_url=None if settings.app_env == "production" else "/openapi.json")
 
@@ -38,7 +38,7 @@ async def blog_error(_: Request, exc: BlogError):
 
 API = "/api/v1"
 for r in (auth.router, public.router, blog_public.router, contact.public, admin.router, media.router,
-          blog_admin.router, contact.admin, ai_admin.router, worker.router):
+          blog_admin.router, contact.admin, ai_admin.router, jobs_admin.router, worker.router):
     app.include_router(r, prefix=API)
 
 

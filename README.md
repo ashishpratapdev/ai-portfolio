@@ -7,6 +7,7 @@ Next.js (App Router, JavaScript, Tailwind) + FastAPI + PostgreSQL (SQLAlchemy 2,
 | 1 | Portfolio pages, secure admin CMS, media | `PHASE_1_REPORT.md` |
 | 2 | Blog CMS, approval workflow, SEO, contact inquiries | `PHASE_2_REPORT.md` |
 | 3 | AI topic discovery + drafting, durable jobs, human approval | `PHASE_3_REPORT.md` |
+| 4 | Job hunt: public job APIs, resume-fit scoring, AI application packets, ON/OFF switch | `PHASE_4_REPORT.md`, `docs/JOB_HUNT.md` |
 
 Also read: `docs/API.md`, `docs/SECURITY_AUDIT.md`, `docs/DEPLOYMENT.md`.
 

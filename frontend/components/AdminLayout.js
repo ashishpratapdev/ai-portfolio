@@ -15,6 +15,7 @@ const I = {
   blog: <><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></>,
   inquiries: <><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></>,
   ai: <><rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" /><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" /></>,
+  jobs: <><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.5" y2="16.5" /></>,
   media: <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></>,
   settings: <><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" /></>,
 };
@@ -22,7 +23,7 @@ const I = {
 const NAV = [
   ["/admin", "Dashboard", "dashboard"], ["/admin/profile", "Profile", "profile"], ["/admin/skills", "Skills", "skills"],
   ["/admin/experience", "Experience", "experience"], ["/admin/projects", "Projects", "projects"], ["/admin/services", "Services", "services"],
-  ["/admin/blog", "Blog", "blog"], ["/admin/inquiries", "Inquiries", "inquiries"], ["/admin/ai", "AI drafts", "ai"],
+  ["/admin/blog", "Blog", "blog"], ["/admin/inquiries", "Inquiries", "inquiries"], ["/admin/ai", "AI drafts", "ai"], ["/admin/jobs", "Job hunt", "jobs"],
   ["/admin/media", "Media", "media"], ["/admin/settings", "Settings", "settings"],
 ];
 

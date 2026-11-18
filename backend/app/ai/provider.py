@@ -77,6 +77,15 @@ class MockProvider(AIProvider):
         self.calls += 1
         if self.calls <= self.fail_times:
             raise ProviderError("mock provider failure", retryable=self.retryable)
+        if "TASK: job_application" in user:
+            if self.response is not None:
+                return dict(self.response), Usage(len(user) // 4, 300)
+            m = re.search(r"^JOB_TITLE: (.+)$", user, re.M)
+            c = re.search(r"^JOB_COMPANY: (.+)$", user, re.M)
+            return {
+                "cover_letter": f"[MOCK COVER LETTER, not real] Dear hiring team at {c.group(1) if c else 'the company'}, I am applying for {m.group(1) if m else 'the role'}.",
+                "resume_highlights": ["[MOCK] Highlight taken from the profile"], "skills_to_emphasize": [], "gaps": [], "subject_line": "Application (mock)",
+            }, Usage(len(user) // 4, 300)
         if self.response is not None:
             return dict(self.response), Usage(len(user) // 4, 800)
         m = re.search(r"^TOPIC: (.+)$", user, re.M)

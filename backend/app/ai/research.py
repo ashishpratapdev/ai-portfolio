@@ -170,6 +170,14 @@ class HttpFetcher:
                 raise FetchError(f"Network error ({type(e).__name__})")
         raise FetchError("Too many redirects")
 
+    def get_json(self, url: str):
+        """GET a JSON document from an approved host (same SSRF/size/redirect protections as feeds)."""
+        import json
+        try:
+            return json.loads(self._get(url, "application/json"))
+        except ValueError:
+            raise FetchError("Response was not valid JSON")
+
     def fetch_feed(self, url: str) -> list[FeedItem]:
         return parse_feed(self._get(url, "application/rss+xml, application/atom+xml, application/xml, text/xml"))
 

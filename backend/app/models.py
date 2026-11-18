@@ -269,3 +269,70 @@ class AIJob(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     log: Mapped[list] = mapped_column(JSON, default=list)
+
+
+# ======================= Phase 4: job hunt =======================
+from sqlalchemy import UniqueConstraint  # noqa: E402
+
+
+class JobSearchConfig(Base):
+    __tablename__ = "job_search_config"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)  # master switch: OFF = nothing is ever fetched
+    keywords: Mapped[list] = mapped_column(JSON, default=list)
+    exclude_keywords: Mapped[list] = mapped_column(JSON, default=list)
+    locations: Mapped[list] = mapped_column(JSON, default=list)
+    remote_only: Mapped[bool] = mapped_column(Boolean, default=False)
+    sources: Mapped[list] = mapped_column(JSON, default=list)
+    min_fit_score: Mapped[int] = mapped_column(Integer, default=35)
+    max_new_per_run: Mapped[int] = mapped_column(Integer, default=40)
+    interval_hours: Mapped[int] = mapped_column(Integer, default=12)
+    my_years: Mapped[int] = mapped_column(Integer, default=2)
+    max_preps_per_day: Mapped[int] = mapped_column(Integer, default=20)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class JobListing(Base):
+    __tablename__ = "job_listings"
+    __table_args__ = (UniqueConstraint("source", "external_id", name="uq_job_source_external"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source: Mapped[str] = mapped_column(String(20))
+    external_id: Mapped[str] = mapped_column(String(120))
+    dedupe_key: Mapped[str] = mapped_column(String(64), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    company: Mapped[str] = mapped_column(String(200))
+    location: Mapped[str] = mapped_column(String(200), default="")
+    remote: Mapped[bool] = mapped_column(Boolean, default=True)
+    url: Mapped[str] = mapped_column(String(1000))          # the source's own listing page (always the primary link)
+    apply_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    description: Mapped[str] = mapped_column(Text)          # UNTRUSTED plain text, truncated
+    tags: Mapped[list] = mapped_column(JSON, default=list)
+    salary_text: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    fit_score: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    fit_reasons: Mapped[dict] = mapped_column(JSON, default=dict)
+    # new | saved | ready | applied | interview | offer | rejected | dismissed
+    status: Mapped[str] = mapped_column(String(16), default="new", index=True)
+    cover_letter: Mapped[str | None] = mapped_column(Text, nullable=True)
+    highlights: Mapped[list] = mapped_column(JSON, default=list)
+    prep_warnings: Mapped[list] = mapped_column(JSON, default=list)
+    prepared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    prep_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class JobSearchRun(Base):
+    __tablename__ = "job_search_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    trigger: Mapped[str] = mapped_column(String(16))  # manual | scheduled
+    status: Mapped[str] = mapped_column(String(16), default="running")  # running | ok | partial | failed
+    new_count: Mapped[int] = mapped_column(Integer, default=0)
+    seen_count: Mapped[int] = mapped_column(Integer, default=0)
+    details: Mapped[dict] = mapped_column(JSON, default=dict)
