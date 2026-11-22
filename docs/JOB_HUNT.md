@@ -10,6 +10,27 @@ The master switch is the only thing that lets the app contact job sites. Default
 - Turning it on/off is audited. It is a separate endpoint (`POST /api/v1/admin/jobs/toggle`); the settings form cannot change it.
 - Your saved jobs and AI packets stay available while OFF. Preparing a packet (AI) is a manual click and works while OFF, limited by "AI packets per day".
 
+## Resume (your own, private)
+Admin → Job hunt → **Your resume**: upload a PDF (≤2 MB) or a .txt, or paste the text. The server reads it (PDF text via `pypdf`; scanned/image PDFs
+cannot be read: paste the text instead) and extracts **skills**, **job titles** and **years of experience**. Those skills are added to your portfolio
+skills for matching, and the resume text is given to the AI as verified facts for cover letters (and the truthfulness checker treats its skills as yours).
+"Use for my search" replaces the search keywords with roles/skills from the resume (generic ones like HTML/CSS/Git are skipped, "manager" roles are not searched).
+The text is stored only in your database, only the first 300 characters are ever returned to the admin UI, and there is no public endpoint for it. "Remove" deletes it.
+Ordinary words (express, next, react, go, rest...) only count as skills in their technical form (Express.js, Next.js, React, Golang, REST).
+
+## MNCs and company career boards
+Many MNCs and startups publish jobs through Greenhouse, Lever or Ashby, which expose official public job-board APIs (no key). Add boards in Settings, one per line:
+`greenhouse:stripe`, `lever:spotify`, `ashby:notion` (the name is the company's board name in its careers URL). Up to 10 boards per search; a wrong name is
+reported in the run notes and skipped. Jobs outside your Locations (e.g. "San Francisco" or "Remote - USA") are dropped, so add India cities to Locations to see their on-site roles.
+Companies that run their own portals (Google, Microsoft, Amazon, Accenture, TCS, Infosys...) have **no public API**. For them the page has "Search other platforms":
+one click opens each site's own search (LinkedIn, Naukri, Indeed India, Google Jobs, Google/Microsoft/Amazon/Accenture careers) with your keywords filled in.
+Nothing is scraped and nothing is submitted; you apply there yourself using the packet from a matching job.
+
+## Dashboard
+Admin → Dashboard (light green layout): matches this month vs last month, applications, interviews/offers, a monthly "matches found" chart, source tiles
+(Active/Inactive with job counts), goals (monthly applications target, search setup completeness), recent matches with status filter, and **Export CSV**
+(formula-injection safe). The sidebar card turns the master switch on/off and runs "Search now".
+
 ## Sources (official public APIs only)
 | Source | Key | Notes |
 |---|---|---|
@@ -17,6 +38,7 @@ The master switch is the only thing that lets the app contact job sites. Default
 | Jobicy `jobicy.com/api/v2` | none | remote jobs, low rate limit (max 2 calls/search) |
 | Arbeitnow `arbeitnow.com/api` | none | mostly Europe; on-site jobs outside your locations are skipped |
 | Adzuna India | free `ADZUNA_APP_ID` + `ADZUNA_APP_KEY` (developer.adzuna.com) | the only source of local Indian jobs; skipped with a clear message if keys are missing |
+| Company career boards | none | Greenhouse `boards-api.greenhouse.io`, Lever `api.lever.co` (1 s delay between calls), Ashby `api.ashbyhq.com`; you choose the companies |
 
 Each source is fetched at most every 30 min (manual) / 3 h (scheduled). One failing source never stops the others. All requests go through the same
 SSRF-safe fetcher as the blog research (approved hosts only, size cap, timeouts).
@@ -41,7 +63,7 @@ With `AI_PROVIDER=mock` the letter is a clearly-marked fake; set `AI_PROVIDER=an
 new → saved → ready → applied → interview → offer / rejected, or dismissed. "I applied" only records that YOU applied (asks for confirmation).
 
 ## Setup
-1. `alembic upgrade head` (migration 0004).
+1. `pip install -r requirements.txt` (adds `pypdf`) and `alembic upgrade head` (migrations 0004 and 0005).
 2. Optional: set `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` on the API host.
 3. Admin → Job hunt → Settings: check keywords, locations, `my_years`, sources → Save. Turn the switch ON → "Search now".
 4. For automatic runs, call `POST /api/v1/worker/tick` (see docs/DEPLOYMENT.md §4). On the free Render plan the API sleeps, so automatic runs only happen when something wakes it.
