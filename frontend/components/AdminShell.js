@@ -18,6 +18,6 @@ export default function AdminShell({ title, subtitle, actions, children }) {
 
 export function Notice({ kind, children }) {
   if (!children) return null;
-  const style = kind === "error" ? "border-red-400/60 bg-red-500/10 text-red-200" : "border-teal/60 bg-teal/10 text-teal";
+  const style = kind === "error" ? "border-red-400/60 bg-red-500/10 text-red-800" : "border-teal/60 bg-teal/10 text-teal";
   return <p role={kind === "error" ? "alert" : "status"} className={`mb-4 rounded-lg border px-3 py-2 text-sm ${style}`}>{children}</p>;
 }

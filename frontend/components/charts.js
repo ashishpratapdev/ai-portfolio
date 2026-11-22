@@ -105,3 +105,46 @@ export function LineChart({ labels, series, unit, ariaLabel }) {
     </figure>
   );
 }
+
+/** Soft gradient bars with the peak month highlighted and a tooltip, like the reference "Overview" chart. */
+export function OverviewBars({ labels, values, valueLabel = "Matches", ariaLabel }) {
+  const W = 640, H = 270, L = 38, B = 30, T = 44, R = 8;
+  const max = niceMax(Math.max(0, ...values));
+  const ih = H - T - B, step = (W - L - R) / values.length, bw = Math.min(40, step * 0.62);
+  const y = (v) => T + ih - (v / max) * ih;
+  const peak = values.reduce((bi, v, i, a) => (v > a[bi] ? i : bi), 0);
+  const hasData = values.some((v) => v > 0);
+  const cx = (i) => L + step * i + step / 2;
+  const tipX = Math.min(Math.max(cx(peak), L + 62), W - R - 62);
+  return (
+    <figure>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel} className="h-auto w-full">
+        <title>{ariaLabel}</title>
+        <defs>
+          <linearGradient id="ov-soft" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="rgb(var(--c-accent))" stopOpacity="0.28" /><stop offset="1" stopColor="rgb(var(--c-accent))" stopOpacity="0.04" /></linearGradient>
+          <linearGradient id="ov-peak" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="rgb(var(--c-accent))" stopOpacity="0.55" /><stop offset="1" stopColor="rgb(var(--c-accent))" stopOpacity="0.05" /></linearGradient>
+        </defs>
+        {[0, 1, 2, 3, 4].map((k) => { const v = (max * k) / 4; return <g key={k}><line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="rgb(var(--c-line))" /><text x={L - 8} y={y(v) + 3} textAnchor="end" fontSize="10" fill="rgb(var(--c-muted))">{Math.round(v * 10) / 10}</text></g>; })}
+        {values.map((v, i) => (
+          <g key={labels[i]}>
+            <rect x={cx(i) - bw / 2} y={y(v)} width={bw} height={Math.max(0, T + ih - y(v))} rx="9" fill={hasData && i === peak ? "url(#ov-peak)" : "url(#ov-soft)"} />
+            <text x={cx(i)} y={H - 9} textAnchor="middle" fontSize="11" fontWeight={hasData && i === peak ? 700 : 400} fill={hasData && i === peak ? "rgb(var(--c-ink))" : "rgb(var(--c-muted))"}>{labels[i]}</text>
+          </g>
+        ))}
+        {hasData && (
+          <g>
+            <line x1={cx(peak)} x2={cx(peak)} y1={y(values[peak])} y2={T + ih} stroke="rgb(var(--c-accent))" strokeWidth="2" />
+            <circle cx={cx(peak)} cy={y(values[peak])} r="6" fill="rgb(var(--c-accent))" stroke="white" strokeWidth="2.5" />
+            <g transform={`translate(${tipX} ${Math.max(y(values[peak]) - 46, 2)})`}>
+              <rect x="-62" width="124" height="38" rx="10" fill="white" stroke="rgb(var(--c-line))" />
+              <circle cx="-48" cy="19" r="3.5" fill="rgb(var(--c-accent))" />
+              <text x="-38" y="15" fontSize="9" fill="rgb(var(--c-muted))">{valueLabel}</text>
+              <text x="-38" y="30" fontSize="13" fontWeight="700" fill="rgb(var(--c-ink))">{values[peak]} jobs · {labels[peak]}</text>
+            </g>
+          </g>
+        )}
+      </svg>
+      {!hasData && <figcaption className="mt-1 text-center text-xs text-muted">No matches yet. Turn the search on and press “Search now”.</figcaption>}
+    </figure>
+  );
+}
