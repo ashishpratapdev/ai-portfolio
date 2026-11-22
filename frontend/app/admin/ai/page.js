@@ -89,7 +89,7 @@ function Overview({ ok, fail }) {
               <div className="flex justify-between"><dt>Estimated cost</dt><dd>{usage.estimated_cost_usd === null ? "unknown" : `$${usage.estimated_cost_usd}`}</dd></div>
             </dl>
             {usage.cost_note && <p className="mt-2 text-xs text-muted">{usage.cost_note}</p>}
-            {usage.provider === "mock" && <p className="mt-2 text-xs font-semibold text-amber-300">Mock provider: drafts are fake placeholders. Set AI_PROVIDER=anthropic on the server for real drafts (billed by your provider).</p>}
+            {usage.provider === "mock" && <p className="mt-2 text-xs font-semibold text-amber-700">Mock provider: drafts are fake placeholders. Set AI_PROVIDER=anthropic on the server for real drafts (billed by your provider).</p>}
           </section>
         )}
         <div className="flex flex-col gap-2">
@@ -174,7 +174,7 @@ function Jobs({ ok, fail }) {
               {["failed", "cancelled"].includes(j.state) && <button className="btn !py-1" onClick={() => act(j.id, "retry")}>Retry</button>}
             </span>
           </div>
-          {j.error && <p className="mt-1 text-sm text-red-300" role="alert">{j.error}</p>}
+          {j.error && <p className="mt-1 text-sm text-red-700" role="alert">{j.error}</p>}
           {j.log?.length > 0 && <details className="mt-1 text-xs text-muted"><summary>Log</summary><ul>{j.log.map((l, i) => <li key={i}>{l.t.slice(11, 19)} {l.m}</li>)}</ul></details>}
         </li>
       ))}
@@ -194,7 +194,7 @@ function Queue({ fail }) {
         return (
           <li key={p.id} className="flex flex-wrap items-center gap-3 py-3">
             <Link className="font-semibold underline decoration-teal decoration-2 underline-offset-4" href={`/admin/blog/${p.id}`}>{p.title}</Link>
-            <span className={`text-sm ${high ? "font-semibold text-red-300" : "text-muted"}`}>{high} high · {p.quality_warnings.length} notes · {p.source_refs.length} sources</span>
+            <span className={`text-sm ${high ? "font-semibold text-red-700" : "text-muted"}`}>{high} high · {p.quality_warnings.length} notes · {p.source_refs.length} sources</span>
           </li>
         );
       })}

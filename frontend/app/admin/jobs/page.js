@@ -1,8 +1,8 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminShell, { Notice } from "@/components/AdminShell";
 import { adminFetch, errorText } from "@/lib/adminApi";
-import { STATUS_LABEL, STATUS_OPTIONS, highWarnings, listToText, parseList, scoreTone, severityClass, timeAgo, wordCount } from "@/lib/jobs";
+import { STATUS_LABEL, STATUS_OPTIONS, highWarnings, listToText, parseList, scoreTone, searchLinks, severityClass, timeAgo, wordCount } from "@/lib/jobs";
 
 const TABS = [["active", "To do"], ["new", "New"], ["saved", "Saved"], ["ready", "Ready"], ["applied", "Applied"], ["interview", "Interview"], ["dismissed", "Dismissed"]];
 
@@ -33,6 +33,12 @@ export default function JobHunt() {
   }, [tab, minScore, q]);
 
   useEffect(() => { loadMeta(); }, [loadMeta]);
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("open"));
+    if (id) setOpen(id);
+    if (window.location.hash === "#settings") setShowSettings(true);
+  }, []);
+  useEffect(() => { const h = () => { loadMeta(); loadJobs(); }; window.addEventListener("jobs-changed", h); return () => window.removeEventListener("jobs-changed", h); }, [loadMeta, loadJobs]);
   useEffect(() => { const t = setTimeout(loadJobs, q ? 300 : 0); return () => clearTimeout(t); }, [loadJobs, q]);
 
   async function toggle() {
@@ -61,7 +67,6 @@ export default function JobHunt() {
 
   const counts = stats?.counts || {};
   const tabCount = (k) => (k === "active" ? (counts.new || 0) + (counts.saved || 0) + (counts.ready || 0) : counts[k] || 0);
-  const selected = useMemo(() => jobs?.find((j) => j.id === open), [jobs, open]);
 
   return (
     <AdminShell title="Job hunt" subtitle="Finds jobs from public job APIs, scores them against your resume, and prepares an honest application for you to send.">
@@ -90,6 +95,9 @@ export default function JobHunt() {
       )}
 
       {showSettings && cfg && <Settings cfg={cfg} onSaved={(c) => { setCfg(c); ok("Settings saved."); setShowSettings(false); }} fail={fail} />}
+
+      {cfg && <ResumeCard cfg={cfg} onChanged={() => { loadMeta(); loadJobs(); }} fail={fail} ok={ok} />}
+      {cfg && <QuickLinks cfg={cfg} />}
 
       <div role="tablist" aria-label="Job status" className="mb-4 flex flex-wrap gap-2">
         {TABS.map(([k, label]) => (
@@ -132,18 +140,85 @@ export default function JobHunt() {
       )}
       <p className="mt-8 text-xs text-muted">Jobs come from the public APIs of RemoteOK, Jobicy, Arbeitnow and (with a free key) Adzuna India. Every link goes to the original posting. Nothing is ever applied on your behalf.</p>
 
-      {selected && <Packet jobId={selected.id} onClose={() => setOpen(null)} onChanged={() => { loadMeta(); loadJobs(); }} fail={fail} ok={ok} />}
+      {open && <Packet jobId={open} onClose={() => setOpen(null)} onChanged={() => { loadMeta(); loadJobs(); }} fail={fail} ok={ok} />}
     </AdminShell>
   );
 }
 
+function ResumeCard({ cfg, onChanged, fail, ok }) {
+  const r = cfg.resume || { uploaded: false };
+  const [paste, setPaste] = useState(false);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState("");
+  async function run(label, req, done) {
+    setBusy(label);
+    const res = await req();
+    setBusy("");
+    if (!res.ok) return fail(res);
+    ok(done(res.data));
+    onChanged();
+  }
+  const upload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    run("up", () => adminFetch("jobs/resume/upload", { method: "POST", body: fd }), (d) => `Resume read: ${d.skills.length} skills and ${d.titles.length} job title(s) found.`);
+  };
+  return (
+    <section id="resume" className="panel-card mb-5" aria-labelledby="rs">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="max-w-2xl"><h2 id="rs" className="font-display text-xl font-bold">Your resume {r.uploaded && <span className="pill ml-2 bg-mark text-teal">✓ loaded</span>}</h2>
+          <p className="mt-1 text-sm text-muted">The search and your AI cover letters are built from this. It is read on the server, stored privately in your database, and never shown on your public site.</p></div>
+        <div className="flex flex-wrap gap-2">
+          <label className={`btn btn-primary cursor-pointer ${busy === "up" ? "opacity-60" : ""}`}>{busy === "up" ? "Reading…" : r.uploaded ? "Replace file" : "Upload PDF / text"}<input type="file" accept=".pdf,.txt,.md,application/pdf,text/plain" className="sr-only" onChange={upload} disabled={busy === "up"} /></label>
+          <button className="btn" onClick={() => setPaste(!paste)} aria-expanded={paste}>Paste text</button>
+        </div>
+      </div>
+      {paste && (
+        <div className="mt-4"><label className="label" htmlFor="pt">Resume text</label><textarea id="pt" className="field min-h-48" value={text} onChange={(e) => setText(e.target.value)} />
+          <button className="btn btn-primary mt-2" disabled={text.trim().length < 80 || busy === "txt"} onClick={() => run("txt", () => adminFetch("jobs/resume/text", { method: "POST", json: { text } }), (d) => `Resume read: ${d.skills.length} skills found.`).then(() => { setText(""); setPaste(false); })}>Save resume text</button></div>
+      )}
+      {r.uploaded ? (
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div><h3 className="eyebrow mb-2">Skills found ({r.skills.length})</h3><ul className="flex flex-wrap gap-1.5">{r.skills.map((s) => <li key={s} className="chip">{s}</li>)}</ul></div>
+          <div><h3 className="eyebrow mb-2">Roles &amp; experience</h3>
+            <ul className="list-disc pl-5 text-sm">{r.titles.map((t) => <li key={t}>{t}</li>)}</ul>
+            {r.years ? <p className="mt-1 text-sm text-muted">Experience stated: {r.years}+ years</p> : null}
+            <p className="mt-1 font-mono text-xs text-muted">{r.filename} · {new Date(r.uploaded_at).toLocaleDateString()}</p></div>
+          <div className="md:col-span-2 flex flex-wrap items-center gap-2 rounded-2xl bg-panel p-3 text-sm">
+            <span className="text-muted">Suggested search keywords:</span>{r.keywords.map((k) => <span key={k} className="chip">{k}</span>)}
+            <button className="btn btn-primary ml-auto !py-1.5 text-xs" disabled={busy === "kw"} onClick={() => run("kw", () => adminFetch("jobs/resume/apply-keywords", { method: "POST" }), () => "Search keywords and experience updated from your resume.")}>Use for my search</button>
+            <button className="btn btn-danger !py-1.5 text-xs" onClick={() => confirm("Remove the stored resume? Your saved jobs stay.") && run("rm", () => adminFetch("jobs/resume", { method: "DELETE" }), () => "Resume removed.")}>Remove</button>
+          </div>
+        </div>
+      ) : <p className="mt-4 rounded-2xl border border-dashed border-line p-4 text-sm text-muted">No resume yet. Upload a PDF (up to 2 MB) or paste the text. Until then the search uses the skills from your portfolio.</p>}
+    </section>
+  );
+}
+
+function QuickLinks({ cfg }) {
+  const links = searchLinks(cfg.keywords, cfg.locations);
+  const groups = [...new Set(links.map((l) => l.group))];
+  return (
+    <section className="panel-card mb-5" aria-labelledby="ql">
+      <h2 id="ql" className="font-display text-lg font-bold">Search other platforms</h2>
+      <p className="mt-1 text-sm text-muted">One click opens each site&apos;s own search with your keywords filled in. Nothing is scraped. Apply there yourself, using the packet from a matching job.</p>
+      <div className="mt-3 space-y-2">{groups.map((g) => (
+        <div key={g} className="flex flex-wrap items-center gap-2"><span className="w-36 text-xs font-semibold uppercase tracking-wider text-muted">{g}</span>
+          {links.filter((l) => l.group === g).map((l) => <a key={l.name} className="btn !py-1.5 text-xs" href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>)}</div>))}</div>
+    </section>
+  );
+}
+
 function Settings({ cfg, onSaved, fail }) {
-  const [f, setF] = useState({ ...cfg, keywords: listToText(cfg.keywords), exclude_keywords: listToText(cfg.exclude_keywords), locations: listToText(cfg.locations) });
+  const [f, setF] = useState({ ...cfg, keywords: listToText(cfg.keywords), exclude_keywords: listToText(cfg.exclude_keywords), locations: listToText(cfg.locations), company_boards: (cfg.company_boards || []).join("\n") });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
   const toggleSource = (k) => setF({ ...f, sources: f.sources.includes(k) ? f.sources.filter((x) => x !== k) : [...f.sources, k] });
   async function save(e) {
     e.preventDefault();
-    const body = { keywords: parseList(f.keywords), exclude_keywords: parseList(f.exclude_keywords), locations: parseList(f.locations), remote_only: f.remote_only, sources: f.sources,
+    const body = { keywords: parseList(f.keywords), exclude_keywords: parseList(f.exclude_keywords), locations: parseList(f.locations), remote_only: f.remote_only, sources: f.sources, company_boards: parseList(f.company_boards), apply_goal: Number(f.apply_goal),
       min_fit_score: Number(f.min_fit_score), max_new_per_run: Number(f.max_new_per_run), interval_hours: Number(f.interval_hours), my_years: Number(f.my_years), max_preps_per_day: Number(f.max_preps_per_day) };
     const r = await adminFetch("jobs/config", { method: "PUT", json: body });
     if (r.ok) onSaved(r.data); else fail(r);
@@ -161,8 +236,13 @@ function Settings({ cfg, onSaved, fail }) {
         ))}
         <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={f.remote_only} onChange={set("remote_only")} /> Remote jobs only</label>
       </fieldset>
-      <div className="grid grid-cols-2 gap-3 md:col-span-2 md:grid-cols-5">
-        {[["min_fit_score", "Min fit (0-100)"], ["max_new_per_run", "Max new / run"], ["interval_hours", "Every (hours, ≥6)"], ["my_years", "My years of experience"], ["max_preps_per_day", "AI packets / day"]].map(([k, l]) => (
+      <div className="md:col-span-2" id="boards">
+        <label className="label" htmlFor="cb">Company career boards (one per line) for MNCs and startups</label>
+        <textarea id="cb" className="field min-h-24 font-mono text-xs" placeholder={"greenhouse:stripe\nlever:spotify\nashby:notion"} value={f.company_boards} onChange={set("company_boards")} />
+        <p className="mt-1 text-xs text-muted">Format <code>greenhouse:name</code>, <code>lever:name</code> or <code>ashby:name</code>, where name is the company&apos;s board name in its careers URL (jobs.lever.co/<b>name</b>). Up to 10 boards per search. Add India cities (Bengaluru, Hyderabad, Pune…) to Locations to see their on-site jobs. Companies with their own portals (Google, Amazon, TCS, Infosys…) have no public API: use the platform links above.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 md:col-span-2 md:grid-cols-6">
+        {[["apply_goal", "Applications goal / month"], ["min_fit_score", "Min fit (0-100)"], ["max_new_per_run", "Max new / run"], ["interval_hours", "Every (hours, ≥6)"], ["my_years", "My years of experience"], ["max_preps_per_day", "AI packets / day"]].map(([k, l]) => (
           <div key={k}><label className="label" htmlFor={k}>{l}</label><input id={k} type="number" className="field" value={f[k]} onChange={set(k)} /></div>
         ))}
       </div>
@@ -232,7 +312,7 @@ function Packet({ jobId, onClose, onChanged, fail, ok }) {
                   {job.prep_warnings.length > 0 && (
                     <ul className="mb-3 space-y-2" aria-label="Review notes">{job.prep_warnings.map((w, i) => <li key={i} className={`rounded-lg border-l-4 px-3 py-2 text-sm ${severityClass(w.severity)}`}><strong>{w.code.replaceAll("_", " ")}</strong>: {w.message}</li>)}</ul>
                   )}
-                  {high.length > 0 && <p role="alert" className="mb-3 rounded-lg bg-red-500/15 px-3 py-2 text-sm font-semibold text-red-200">{high.length} serious issue(s) above. Fix them before you send anything.</p>}
+                  {high.length > 0 && <p role="alert" className="mb-3 rounded-lg bg-red-500/15 px-3 py-2 text-sm font-semibold text-red-800">{high.length} serious issue(s) above. Fix them before you send anything.</p>}
                   <label className="label" htmlFor="cl">Cover letter ({wordCount(letter)} words, editable)</label>
                   <textarea id="cl" className="field min-h-64" value={letter} onChange={(e) => setLetter(e.target.value)} />
                   <div className="mt-2 flex flex-wrap gap-2">

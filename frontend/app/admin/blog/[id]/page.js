@@ -98,8 +98,8 @@ export default function Editor({ params }) {
             {post.approved_at && <> · approved {post.approval_valid ? "this exact revision" : "an older revision (no longer valid)"} on {new Date(post.approved_at).toLocaleString()} by admin #{post.approved_by}</>}
             {post.scheduled_at && <> · scheduled for {new Date(post.scheduled_at).toLocaleString()}</>}
           </p>
-          {post.rejection_reason && <p className="mt-2 text-sm text-red-300">Rejected: {post.rejection_reason}</p>}
-          {dirty && <p className="mt-2 text-sm font-semibold text-amber-300">You have unsaved changes. Save before using workflow actions so you approve what you reviewed.</p>}
+          {post.rejection_reason && <p className="mt-2 text-sm text-red-700">Rejected: {post.rejection_reason}</p>}
+          {dirty && <p className="mt-2 text-sm font-semibold text-amber-700">You have unsaved changes. Save before using workflow actions so you approve what you reviewed.</p>}
           <div className="mt-4 flex flex-wrap gap-2">
             {s === "draft" && <button className="btn" disabled={dirty} onClick={() => act("review", undefined, "Submitted for review.")}>Submit for review</button>}
             {s === "in_review" && <button className="btn btn-primary" disabled={dirty} onClick={() => act("approve", { revision_hash: post.content_hash }, "Approved this exact revision.")}>Approve this revision</button>}
