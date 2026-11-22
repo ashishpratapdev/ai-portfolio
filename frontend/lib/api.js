@@ -1,5 +1,5 @@
-const API = process.env.API_URL || "https://portfolio-ashish-api.onrender.com/";
-const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL || "https://portfolio-ashish-api.onrender.com/";
+const API = process.env.API_URL || "http://localhost:8000";
+const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 import { STATIC_CONTENT as S } from "./static-content.js";
 
