@@ -1,6 +1,7 @@
+import os
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -10,9 +11,11 @@ from ..config import get_settings
 from ..database import get_db
 from ..deps import audit, get_current_admin
 from ..jobs import providers as pv
+from ..jobs import resume as resume_mod
 from ..jobs import service
 from ..models import AdminUser, JobListing, JobSearchRun, utcnow
-from ..schemas_jobs import JobConfigIn, JobPatch, ToggleIn
+from ..schemas_jobs import JobConfigIn, JobPatch, ResumeTextIn, ToggleIn
+from ..services.blog import as_utc
 
 router = APIRouter(prefix="/admin/jobs", tags=["admin:jobs"], dependencies=[Depends(get_current_admin)])
 
@@ -24,7 +27,10 @@ def _config(db: Session) -> dict:
     s = get_settings()
     sources = [{"key": k, "name": v["name"], "home": v["home"], "needs_key": v["needs_key"],
                "available": (not v["needs_key"]) or bool(s.adzuna_app_id and s.adzuna_app_key)} for k, v in pv.SOURCE_INFO.items()]
-    return {"enabled": c.enabled, "enabled_at": c.enabled_at, "last_run_at": c.last_run_at, **{k: getattr(c, k) for k in CONFIG_FIELDS}, "available_sources": sources}
+    values = {k: getattr(c, k) for k in CONFIG_FIELDS}
+    values["company_boards"] = values["company_boards"] or []
+    values["apply_goal"] = values["apply_goal"] or 20
+    return {"enabled": c.enabled, "enabled_at": c.enabled_at, "last_run_at": c.last_run_at, **values, "available_sources": sources, "resume": service.resume_summary(c)}
 
 
 def _row(j: JobListing, full: bool = False) -> dict:
@@ -86,15 +92,90 @@ def runs(db: Session = Depends(get_db)):
 
 @router.get("/stats")
 def stats(db: Session = Depends(get_db)):
-    counts = dict(db.execute(select(JobListing.status, func.count()).group_by(JobListing.status)).all())
     c = service.get_config(db)
-    return {"enabled": c.enabled, "counts": {s: counts.get(s, 0) for s in service.STATUSES}, "last_run_at": c.last_run_at}
+    now = utcnow()
+    counts = dict(db.execute(select(JobListing.status, func.count()).group_by(JobListing.status)).all())
+    found, applied, by_source = {}, {}, {}
+    for fetched, applied_at, source in db.execute(select(JobListing.fetched_at, JobListing.applied_at, JobListing.source)).all():
+        f, a = as_utc(fetched), as_utc(applied_at)
+        if f:
+            found[(f.year, f.month)] = found.get((f.year, f.month), 0) + 1
+        if a:
+            applied[(a.year, a.month)] = applied.get((a.year, a.month), 0) + 1
+        by_source[source] = by_source.get(source, 0) + 1
+    this, last = (now.year, now.month), ((now.year, now.month - 1) if now.month > 1 else (now.year - 1, 12))
+    checks = [("Resume uploaded", bool(c.resume_text), 40), ("5+ skills detected", len(c.resume_skills or []) >= 5, 20),
+              ("3+ search keywords", len(c.keywords or []) >= 3, 20), ("Company boards added", bool(c.company_boards), 20)]
+    return {
+        "enabled": c.enabled, "last_run_at": c.last_run_at, "counts": {s: counts.get(s, 0) for s in service.STATUSES},
+        "year": now.year, "monthly": {"found": [found.get((now.year, m), 0) for m in range(1, 13)], "applied": [applied.get((now.year, m), 0) for m in range(1, 13)]},
+        "this_month": {"found": found.get(this, 0), "applied": applied.get(this, 0)}, "last_month": {"found": found.get(last, 0), "applied": applied.get(last, 0)},
+        "goal": c.apply_goal or 20, "by_source": by_source,
+        "completeness": {"percent": sum(w for _, ok, w in checks if ok), "checks": [{"label": l, "done": ok} for l, ok, _ in checks]},
+    }
+
+
+@router.get("/resume")
+def get_resume(db: Session = Depends(get_db)):
+    return service.resume_summary(service.get_config(db))
+
+
+def _store_resume(db: Session, text: str, name: str, me: AdminUser) -> dict:
+    try:
+        summary = service.set_resume(db, text, name)
+    except resume_mod.ResumeError as e:
+        raise HTTPException(422, str(e))
+    audit(db, me, "resume_update", "job_search", detail=name)
+    db.commit()
+    return summary
+
+
+@router.post("/resume/upload")
+async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_db), me: AdminUser = Depends(get_current_admin)):
+    data = await file.read(2_000_001)
+    if len(data) > 2_000_000:
+        raise HTTPException(413, "The file is larger than 2 MB.")
+    name = os.path.basename(file.filename or "resume")[:255]
+    if name.lower().endswith((".txt", ".md")):
+        text = data.decode("utf-8", "replace")
+    elif name.lower().endswith(".pdf") or data.startswith(b"%PDF-"):
+        try:
+            text = resume_mod.extract_text_pdf(data)
+        except resume_mod.ResumeError as e:
+            raise HTTPException(422, str(e))
+    else:
+        raise HTTPException(415, "Upload a PDF or a .txt file, or paste your resume text.")
+    return _store_resume(db, text, name, me)
+
+
+@router.post("/resume/text")
+def paste_resume(body: ResumeTextIn, db: Session = Depends(get_db), me: AdminUser = Depends(get_current_admin)):
+    return _store_resume(db, body.text, "pasted text", me)
+
+
+@router.delete("/resume")
+def delete_resume(db: Session = Depends(get_db), me: AdminUser = Depends(get_current_admin)):
+    service.clear_resume(db)
+    audit(db, me, "resume_delete", "job_search")
+    db.commit()
+    return {"uploaded": False}
+
+
+@router.post("/resume/apply-keywords")
+def apply_resume_keywords(db: Session = Depends(get_db), me: AdminUser = Depends(get_current_admin)):
+    try:
+        service.use_resume_keywords(db)
+    except resume_mod.ResumeError as e:
+        raise HTTPException(409, str(e))
+    audit(db, me, "update", "job_search_config", detail="keywords from resume")
+    db.commit()
+    return _config(db)
 
 
 @router.get("")
 def list_jobs(status: Optional[str] = Query(None, pattern="^(new|saved|ready|applied|interview|offer|rejected|dismissed|active)$"),
               min_score: int = Query(0, ge=0, le=100), source: Optional[str] = Query(None, max_length=20), q: Optional[str] = Query(None, max_length=100),
-              limit: int = Query(100, ge=1, le=200), db: Session = Depends(get_db)):
+              sort: str = Query("fit", pattern="^(fit|recent)$"), limit: int = Query(100, ge=1, le=200), db: Session = Depends(get_db)):
     stmt = select(JobListing)
     if status == "active":
         stmt = stmt.where(JobListing.status.in_(("new", "saved", "ready")))
@@ -106,7 +187,8 @@ def list_jobs(status: Optional[str] = Query(None, pattern="^(new|saved|ready|app
         stmt = stmt.where(JobListing.source == source)
     if q:
         stmt = stmt.where(or_(JobListing.title.icontains(q, autoescape=True), JobListing.company.icontains(q, autoescape=True)))
-    stmt = stmt.order_by(JobListing.fit_score.desc(), JobListing.posted_at.desc().nullslast(), JobListing.id.desc()).limit(limit)
+    order = (JobListing.fetched_at.desc(), JobListing.id.desc()) if sort == "recent" else (JobListing.fit_score.desc(), JobListing.posted_at.desc().nullslast(), JobListing.id.desc())
+    stmt = stmt.order_by(*order).limit(limit)
     return [_row(j) for j in db.scalars(stmt).all()]
 
 

@@ -1,0 +1,36 @@
+ASHISH PRATAP
+Full Stack Developer | React.js | Node.js | MongoDB | Python
+Gorakhpur, Uttar Pradesh, India
+PROFESSIONAL SUMMARY
+Full Stack Developer with 2+ years of experience building responsive, scalable web applications using React.js, Next.js,
+Node.js, MongoDB, and Python. Skilled in developing end-to-end solutions for client and internal projects, from front-end UI
+to back-end APIs and database design. Currently managing IT operations alongside development responsibilities, with strong
+ability to work independently and coordinate across teams.
+TECHNICAL SKILLS
+Languages & Frameworks: JavaScript, Python, HTML5, CSS3, React.js, Next.js, Redux.js, Node.js, Express.js
+Database: MongoDB
+Styling & Tools: Tailwind CSS, Bootstrap, WordPress, Git
+Other: Team Management, IT Operations Management
+WORK EXPERIENCE
+Full Stack Developer Oct 2024 - Present
+DigiQuest Consultancy Services Pvt. Ltd. | Gorakhpur, Uttar Pradesh, India
+• Develop and maintain live client and internal web applications using React.js, Next.js, Node.js, MongoDB, Python, and Tailwind CSS.
+• Build responsive, high-performance user interfaces and integrate them with backend APIs and databases.
+• Collaborate across design and development functions to deliver end-to-end product features.
+Web Developer and IT Manager Oct 2024 - Present
+DigiQuest Consultancy Services Pvt. Ltd. | Gorakhpur, Uttar Pradesh, India
+• Manage IT operations and infrastructure needs for the organization alongside core development work.
+• Oversee web development projects using Bootstrap and related frameworks, from planning to deployment.
+Internship Trainee - Frontend Developer Mar 2024 - Sep 2024
+Alobha Technologies Pvt. Ltd. | Noida, Uttar Pradesh, India
+• Built and styled responsive user interfaces using HTML5, CSS3, JavaScript, and Redux.js.
+Freelance Web Developer 2017 - 2024
+Self-Employed | Remote
+• Self-taught web development through online platforms including freeCodeCamp, Udemy, and YouTube, covering HTML, CSS, JavaScript, and React.js.
+• Delivered small-scale websites and web applications for freelance clients, handling requirements gathering, design, and development independently.
+PROJECTS
+IT Solution Website
+• Implemented modern, mobile-friendly design using React.js and Tailwind CSS.
+EDUCATION
+B.Tech, Electronics and Communications Engineering
+Buddha Institute of Technology, India

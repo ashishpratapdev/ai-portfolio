@@ -38,6 +38,15 @@ def default_data():
             {"id": 13, "url": "https://jobicy.com/jobs/13-dup", "jobTitle": "React Developer", "companyName": "Acme", "jobGeo": "Anywhere", "jobDescription": "React", "pubDate": iso}]},
         "arbeitnow.com": {"data": [{"slug": "dev-berlin", "company_name": "Corp", "title": "Developer", "remote": False, "location": "Berlin",
                                     "url": "https://www.arbeitnow.com/jobs/dev-berlin", "tags": ["python"], "description": "python", "created_at": _now_epoch()}]},
+        "boards-api.greenhouse.io": {"jobs": [
+            {"id": 4001, "title": "Software Engineer, Frontend", "absolute_url": "https://boards.greenhouse.io/stripe/jobs/4001", "location": {"name": "Bengaluru, India"},
+             "content": "&lt;p&gt;Build UIs with React, Node.js, JavaScript and MongoDB.&lt;/p&gt;", "departments": [{"name": "Engineering"}], "first_published": datetime.now(timezone.utc).isoformat()},
+            {"id": 4002, "title": "Account Executive", "absolute_url": "https://boards.greenhouse.io/stripe/jobs/4002", "location": {"name": "San Francisco, CA"}, "content": "&lt;p&gt;Sales&lt;/p&gt;"}]},
+        "api.lever.co": [{"id": "lv-1", "text": "Full Stack Engineer", "categories": {"location": "Hyderabad, India", "team": "Web"}, "hostedUrl": "https://jobs.lever.co/spotify/lv-1",
+                          "descriptionPlain": "React Node.js Express.js MongoDB", "createdAt": _now_epoch() * 1000},
+                         {"id": "lv-2", "text": "Backend Engineer", "categories": {"location": "Remote - USA"}, "workplaceType": "remote", "hostedUrl": "https://jobs.lever.co/spotify/lv-2",
+                          "descriptionPlain": "Node.js", "createdAt": _now_epoch() * 1000}],
+        "api.ashbyhq.com": {"jobs": []},
         "api.adzuna.com": {"results": [{"id": "A1", "title": "Full Stack Engineer", "description": "React and Node.js", "created": datetime.now(timezone.utc).isoformat(),
                                         "redirect_url": "https://www.adzuna.in/land/ad/A1", "company": {"display_name": "Zeta"}, "location": {"display_name": "Lucknow, India"}}]},
     }
@@ -47,7 +56,7 @@ class FakeJobs:
     def __init__(self, data=None, fail=()):
         self.data, self.fail, self.calls = data or default_data(), set(fail), []
 
-    def get_json(self, url):
+    def get_json(self, url, max_bytes=None):
         self.calls.append(url)
         host = urlparse(url).hostname
         if any(f in host for f in self.fail):
@@ -58,6 +67,7 @@ class FakeJobs:
 @pytest.fixture
 def env(client, auth, monkeypatch):
     fetcher, provider = FakeJobs(), MockProvider()
+    monkeypatch.setattr("app.jobs.providers.SLEEP", lambda s: None)
     monkeypatch.setattr(runtime, "get_job_fetcher", lambda: fetcher)
     monkeypatch.setattr(runtime, "get_provider", lambda: provider)
     return SimpleNamespace(client=client, auth=auth, fetcher=fetcher, provider=provider)
@@ -285,3 +295,115 @@ def test_scheduled_tick_searches_only_when_on_and_due(env):
     assert env.client.post("/api/v1/worker/tick", headers=WORKER).json()["job_search"] is None and len(env.fetcher.calls) == calls
     with SessionLocal() as db:
         assert db.query(JobListing).count() == 3
+
+
+# ------------------------------------------------------------------ resume, company boards (MNCs), stats
+RESUME_TEXT = (__import__("pathlib").Path(__file__).parent / "fixtures" / "resume_sample.txt").read_text()
+KEYS = ("keywords", "exclude_keywords", "locations", "remote_only", "sources", "min_fit_score", "max_new_per_run", "interval_hours", "my_years", "max_preps_per_day", "company_boards", "apply_goal")
+
+
+def cfg_body(env, **over):
+    cfg = env.client.get(f"{J}/config", headers=env.auth).json()
+    return {**{k: cfg[k] for k in KEYS}, **over}
+
+
+def put_cfg(env, **over):
+    r = env.client.put(f"{J}/config", json=cfg_body(env, **over), headers=env.auth)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_company_boards_find_mnc_jobs_skip_region_locked_ones_and_report_bad_boards(env):
+    put_cfg(env, sources=["boards"], company_boards=["greenhouse:stripe", "lever:spotify", "ashby:notion"])
+    env.fetcher.fail = {"api.ashbyhq.com"}
+    on(env)
+    r = search(env).json()
+    assert r["new_count"] == 2, r
+    assert set(titles(env)) == {"Software Engineer, Frontend", "Full Stack Engineer"}       # on-site US sales job and 'Remote - USA' job are skipped
+    assert any("ashby:notion" in n for n in r["details"]["boards"]["notes"])
+    assert {x["source"] for x in env.client.get(J, headers=env.auth).json()} == {"greenhouse", "lever"}
+    assert all(u.startswith(("https://boards-api.greenhouse.io/", "https://api.lever.co/", "https://api.ashbyhq.com/")) for u in env.fetcher.calls)
+
+
+def test_boards_source_needs_boards_and_rejects_malformed_entries(env):
+    put_cfg(env, sources=["boards"], company_boards=[])
+    on(env)
+    assert "Add company boards" in search(env).json()["details"]["boards"]["skipped"]
+    for bad in (["greenhouse:../etc"], ["workday:google"], ["lever:Bad Token"], ["stripe"]):
+        assert env.client.put(f"{J}/config", json=cfg_body(env, company_boards=bad), headers=env.auth).status_code == 422, bad
+
+
+def test_resume_text_is_analysed_stored_privately_and_drives_the_search(env):
+    put_cfg(env, sources=["remoteok"])
+    env.fetcher.data["remoteok.com"] = [{"legal": "x"}, {"id": "r1", "position": "Rust Systems Engineer", "company": "Ferris", "tags": ["rust", "kubernetes"],
+                                                         "description": "Rust and Kubernetes", "epoch": _now_epoch()}]
+    on(env)
+    assert search(env).json()["new_count"] == 0                                               # not your skills yet
+    r = env.client.post(f"{J}/resume/text", json={"text": "Systems programmer. Rust, Kubernetes and Docker. Built Rust services for two years. " * 3}, headers=env.auth)
+    assert r.status_code == 200 and {"Rust", "Kubernetes", "Docker"} <= set(r.json()["skills"]) and r.json()["uploaded"] is True
+    reset_gap()
+    assert search(env).json()["new_count"] == 1                                               # the resume's skills now match this job
+    assert len(env.client.get(f"{J}/resume", headers=env.auth).json()["excerpt"]) <= 300
+    assert env.client.get(f"{J}/config", headers=env.auth).text.count("Built Rust services for two years") <= 1  # only a short excerpt, never the full text
+    assert env.client.delete(f"{J}/resume", headers=env.auth).json() == {"uploaded": False}
+
+
+def test_resume_upload_validation_and_pdf_path(env, monkeypatch):
+    c, a = env.client, env.auth
+    assert c.post(f"{J}/resume/upload", files={"file": ("r.pdf", b"%PDF-1.4", "application/pdf")}).status_code == 401
+    assert c.post(f"{J}/resume/upload", files={"file": ("r.pdf", b"definitely not a pdf", "application/pdf")}, headers=a).status_code == 422
+    assert c.post(f"{J}/resume/upload", files={"file": ("r.exe", b"MZ" + b"0" * 50, "application/octet-stream")}, headers=a).status_code == 415
+    assert c.post(f"{J}/resume/upload", files={"file": ("r.txt", b"x" * 2_100_000, "text/plain")}, headers=a).status_code == 413
+    assert c.post(f"{J}/resume/upload", files={"file": ("r.txt", b"too short", "text/plain")}, headers=a).status_code == 422
+    assert c.post(f"{J}/resume/text", json={"text": "short"}, headers=a).status_code == 422
+    monkeypatch.setattr("app.jobs.resume.extract_text_pdf", lambda data: RESUME_TEXT)
+    r = c.post(f"{J}/resume/upload", files={"file": ("Ashish_Resume.pdf", b"%PDF-1.4 fake", "application/pdf")}, headers=a).json()
+    assert r["filename"] == "Ashish_Resume.pdf" and r["years"] == 2 and "Full Stack Developer" in r["titles"] and "React" in r["skills"]
+    assert c.post(f"{J}/resume/upload", files={"file": ("r.txt", RESUME_TEXT.encode(), "text/plain")}, headers=a).status_code == 200
+
+
+def test_resume_keywords_can_be_applied_to_the_search(env):
+    assert env.client.post(f"{J}/resume/apply-keywords", headers=env.auth).status_code == 409   # no resume yet
+    env.client.post(f"{J}/resume/text", json={"text": RESUME_TEXT}, headers=env.auth)
+    cfg = env.client.post(f"{J}/resume/apply-keywords", headers=env.auth).json()
+    assert "full stack developer" in cfg["keywords"] and "react" in cfg["keywords"] and cfg["my_years"] == 2
+    assert not any(k.endswith("manager") for k in cfg["keywords"])
+
+
+def test_resume_feeds_the_ai_packet_and_allows_its_skills(env, monkeypatch):
+    from app.ai.provider import Usage
+    env.client.post(f"{J}/resume/text", json={"text": "Platform engineer. Rust, Kubernetes and AWS. " * 4 + "Worked at Ferris Labs on Rust services."}, headers=env.auth)
+    jid = first_job(env)
+    seen = {}
+
+    class Capture(MockProvider):
+        def complete_json(self, system, user, max_tokens=4000):
+            seen["user"] = user
+            return {"cover_letter": "Dear team, I build Rust services on AWS and Kubernetes and I also know Docker well enough. " * 3 + "Ashish", "resume_highlights": []}, Usage(10, 10)
+
+    monkeypatch.setattr(runtime, "get_provider", lambda: Capture())
+    d = env.client.post(f"{J}/{jid}/prepare", headers=env.auth).json()
+    assert "OWNER_RESUME" in seen["user"] and "Ferris Labs" in seen["user"]
+    flagged = " ".join(w["message"] for w in d["prep_warnings"] if w["code"] == "unverified_skill")
+    assert "docker" in flagged and "rust" not in flagged and "aws" not in flagged        # Docker is not in the resume; Rust/AWS are
+
+
+def test_stats_monthly_goal_sources_and_profile_completeness(env):
+    s0 = env.client.get(f"{J}/stats", headers=env.auth).json()
+    assert s0["goal"] == 20 and s0["completeness"]["percent"] == 20 and sum(s0["monthly"]["found"]) == 0   # only the default keywords are done
+    jid = first_job(env)
+    env.client.patch(f"{J}/{jid}", json={"status": "applied"}, headers=env.auth)
+    s = env.client.get(f"{J}/stats", headers=env.auth).json()
+    now = datetime.now(timezone.utc)
+    assert s["this_month"] == {"found": 3, "applied": 1} and s["monthly"]["found"][now.month - 1] == 3 and s["monthly"]["applied"][now.month - 1] == 1
+    assert s["by_source"] == {"remoteok": 2, "jobicy": 1} and s["counts"]["applied"] == 1 and s["year"] == now.year
+    env.client.post(f"{J}/resume/text", json={"text": RESUME_TEXT}, headers=env.auth)
+    put_cfg(env, company_boards=["greenhouse:stripe"], apply_goal=5)
+    s2 = env.client.get(f"{J}/stats", headers=env.auth).json()
+    assert s2["completeness"]["percent"] == 100 and s2["goal"] == 5 and all(c["done"] for c in s2["completeness"]["checks"])
+
+
+def test_list_sorting_options(env):
+    first_job(env)
+    assert len(titles(env, sort="recent")) == 3 and len(titles(env, sort="fit")) == 3
+    assert env.client.get(J, params={"sort": "random"}, headers=env.auth).status_code == 422

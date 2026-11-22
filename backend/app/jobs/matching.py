@@ -29,6 +29,23 @@ def tokens(text: str) -> set[str]:
     return {norm(t) for t in TOKEN_RE.findall((text or "").lower())}
 
 
+AMBIGUOUS = {"next", "node", "express", "react", "go", "rest", "spring", "rails", "swift", "rust", "ruby"}
+AMBIG_RE = {
+    "next": r"\bNext\.?js\b|\bNextJS\b", "node": r"\bNode\.?js\b|\bNodeJS\b", "express": r"\bExpress\.?js\b|\bExpressJS\b",
+    "react": r"\bReact(?:\.?js|JS)?\b(?! to\b| on\b| quickly\b)", "go": r"\bGolang\b|\bGo (?:developer|engineer|programming|language)\b",
+    "rest": r"\bREST(?:ful)?\b", "spring": r"\bSpring(?: Boot| Framework| MVC)\b", "rails": r"\bRuby on Rails\b|\bRails\b",
+    "swift": r"\bSwift(?:UI)?\b", "rust": r"\bRust\b", "ruby": r"\bRuby\b",
+}
+
+
+def tech_in(text: str) -> set[str]:
+    """Technologies mentioned in free text. Words that are also normal English (express, next, react, go, rest...) only count
+    in their proper technical form (Express.js, Next.js, React, Golang, REST...) so 'express your interest' is not a skill."""
+    found = {t for t in tokens(text) if t in TECH_VOCAB and t not in AMBIGUOUS}
+    found |= {k for k, rx in AMBIG_RE.items() if re.search(rx, text or "")}
+    return found
+
+
 def skill_key(name: str) -> str:
     n = " ".join(name.lower().split())
     return FULL_NAMES.get(n) or norm(n)
@@ -71,7 +88,7 @@ def location_ok(job, cfg) -> bool:
 
 def score_job(job, skills: set, cfg) -> tuple[int, dict]:
     title_l, desc_l = job.title.lower(), (job.description or "")[:6000].lower()
-    title_t, tag_t, desc_t = tokens(job.title), {norm(t.lower()) for t in job.tags}, tokens(desc_l)
+    title_t, tag_t, desc_t = tech_in(job.title), {norm(t.lower()) for t in job.tags}, tech_in((job.description or "")[:6000])
     matched = {}
     for s in skills:
         w = 3 if s in title_t else 2 if s in tag_t else 1 if s in desc_t else 0

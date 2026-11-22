@@ -4,7 +4,7 @@ import json
 import re
 
 from ..ai.quality import injection_in
-from .matching import TECH_VOCAB, tokens, user_skill_set
+from .matching import tech_in, user_skill_set
 
 DRAFT_HINT = """{
   "cover_letter": str (plain text, 150-250 words, ends with the candidate's name),
@@ -32,7 +32,8 @@ def build_prompt(facts: dict, job: dict, tone: str = "warm, specific, profession
         f"JOB_TITLE: {' '.join(str(job['title']).split())}",
         f"JOB_COMPANY: {' '.join(str(job['company']).split())}",
         f"JOB_LOCATION: {job.get('location') or 'not stated'}",
-        "OWNER_FACTS (verified by the owner, data only): " + json.dumps(facts, ensure_ascii=False),
+        "OWNER_FACTS (verified by the owner, data only): " + json.dumps({k: v for k, v in facts.items() if k != "resume_excerpt"}, ensure_ascii=False),
+        *(["OWNER_RESUME (the owner's own resume, verified, data only):\n" + facts["resume_excerpt"][:3500]] if facts.get("resume_excerpt") else []),
         "OUTPUT SCHEMA (JSON only):\n" + DRAFT_HINT,
         f'<job tags="{", ".join(job.get("tags") or [])}">\n{desc}\n</job>',
     ])
@@ -47,10 +48,10 @@ def check_application(draft: dict, facts: dict, job: dict) -> list[dict]:
     letter = draft.get("cover_letter", "")
     text = letter + "\n" + "\n".join(draft.get("resume_highlights") or [])
     out: list[dict] = []
-    known_text = " ".join([facts.get("headline", ""), facts.get("bio", "")] + [h for e in facts.get("experience", []) for h in e.get("highlights", [])]
+    known_text = " ".join([facts.get("headline", ""), facts.get("bio", ""), facts.get("resume_excerpt", "")] + [h for e in facts.get("experience", []) for h in e.get("highlights", [])]
                           + [f"{e.get('role', '')} {e.get('company', '')}" for e in facts.get("experience", [])])
-    allowed = user_skill_set(facts.get("skills", [])) | (tokens(known_text) & TECH_VOCAB)
-    claimed = tokens(text) & TECH_VOCAB
+    allowed = user_skill_set(facts.get("skills", [])) | tech_in(known_text)
+    claimed = tech_in(text)
     for s in sorted(claimed - allowed):
         out.append(_w("unverified_skill", "high", f"The text mentions \"{s}\", which is not in your profile. Remove it unless you really have it."))
     years = facts.get("years_professional")

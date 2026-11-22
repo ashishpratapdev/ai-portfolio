@@ -289,6 +289,14 @@ class JobSearchConfig(Base):
     interval_hours: Mapped[int] = mapped_column(Integer, default=12)
     my_years: Mapped[int] = mapped_column(Integer, default=2)
     max_preps_per_day: Mapped[int] = mapped_column(Integer, default=20)
+    company_boards: Mapped[list | None] = mapped_column(JSON, nullable=True)       # ["greenhouse:stripe", "lever:spotify", ...]
+    apply_goal: Mapped[int | None] = mapped_column(Integer, nullable=True)          # monthly application goal
+    resume_text: Mapped[str | None] = mapped_column(Text, nullable=True)            # the owner's own resume text (private)
+    resume_skills: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    resume_titles: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    resume_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    resume_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    resume_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

@@ -5,7 +5,8 @@ from pydantic import Field, field_validator
 from .schemas import Strict
 
 Word = Annotated[str, Field(min_length=2, max_length=60)]
-SourceName = Literal["remoteok", "jobicy", "arbeitnow", "adzuna"]
+SourceName = Literal["remoteok", "jobicy", "arbeitnow", "adzuna", "boards"]
+BoardRef = Annotated[str, Field(pattern=r"^(greenhouse|lever|ashby):[a-z0-9][a-z0-9_-]{1,60}$")]
 
 
 class JobConfigIn(Strict):  # note: no `enabled` here. The ON/OFF switch has its own explicit endpoint.
@@ -13,7 +14,9 @@ class JobConfigIn(Strict):  # note: no `enabled` here. The ON/OFF switch has its
     exclude_keywords: list[Word] = Field(default_factory=list, max_length=20)
     locations: list[Word] = Field(default_factory=list, max_length=10)
     remote_only: bool = False
-    sources: list[SourceName] = Field(min_length=1, max_length=4)
+    sources: list[SourceName] = Field(min_length=1, max_length=5)
+    company_boards: list[BoardRef] = Field(default_factory=list, max_length=25)
+    apply_goal: int = Field(20, ge=1, le=500)
     min_fit_score: int = Field(ge=0, le=100)
     max_new_per_run: int = Field(ge=5, le=100)
     interval_hours: int = Field(ge=6, le=168)
@@ -25,6 +28,11 @@ class JobConfigIn(Strict):  # note: no `enabled` here. The ON/OFF switch has its
     def _unique(cls, v):
         return list(dict.fromkeys(v))
 
+    @field_validator("company_boards")
+    @classmethod
+    def _unique_boards(cls, v):
+        return list(dict.fromkeys(v))
+
 
 class ToggleIn(Strict):
     enabled: bool
@@ -34,3 +42,7 @@ class JobPatch(Strict):
     status: Optional[Literal["new", "saved", "ready", "applied", "interview", "offer", "rejected", "dismissed"]] = None
     notes: Optional[str] = Field(None, max_length=5000)
     cover_letter: Optional[str] = Field(None, max_length=5000)
+
+
+class ResumeTextIn(Strict):
+    text: str = Field(min_length=80, max_length=30000)

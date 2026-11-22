@@ -150,14 +150,14 @@ class HttpFetcher:
         if not _is_public_host(p.hostname):
             raise FetchError("Host does not resolve to a public address")
 
-    def _get(self, url: str, accept: str = "*/*", max_redirects: int = 3) -> bytes:
+    def _get(self, url: str, accept: str = "*/*", max_redirects: int = 3, max_bytes: int = MAX_BYTES) -> bytes:
         for _ in range(max_redirects + 1):
             self._validate(url)
             req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": accept})
             try:
                 with _opener.open(req, timeout=10) as resp:
-                    data = resp.read(MAX_BYTES + 1)
-                    if len(data) > MAX_BYTES:
+                    data = resp.read(max_bytes + 1)
+                    if len(data) > max_bytes:
                         raise FetchError("Response too large")
                     return data
             except urllib.error.HTTPError as e:
@@ -170,11 +170,11 @@ class HttpFetcher:
                 raise FetchError(f"Network error ({type(e).__name__})")
         raise FetchError("Too many redirects")
 
-    def get_json(self, url: str):
+    def get_json(self, url: str, max_bytes: int = MAX_BYTES):
         """GET a JSON document from an approved host (same SSRF/size/redirect protections as feeds)."""
         import json
         try:
-            return json.loads(self._get(url, "application/json"))
+            return json.loads(self._get(url, "application/json", max_bytes=max_bytes))
         except ValueError:
             raise FetchError("Response was not valid JSON")
 
