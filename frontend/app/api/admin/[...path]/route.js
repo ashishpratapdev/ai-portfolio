@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 import { API } from "@/lib/api";
 import { COOKIE, sameOrigin } from "@/lib/server-auth";
 
+// A job search can take a while (several sources); give the proxy room on serverless hosts.
+export const maxDuration = 60;
+
 const SEGMENT = /^[A-Za-z0-9_-]+$/;
 
 async function handler(req, { params }) {
